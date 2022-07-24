@@ -44,7 +44,9 @@
 # 10. Don't do this:
 # ... -> ... -> ...
 
-# 11. Any subgraphs whose name does not begin with def_ are ignored
+# 11. subgraph ignore {} is completely ignored
+
+# 12. Do NOT use block comments /* */
 
 digraph G {
     subgraph def_Query {
@@ -76,14 +78,51 @@ digraph G {
         WHERE -> call0_VAL_3
 
         SELECT []
-        call0_VAL_3 -> SELECT
-        EXIT_FROM -> SELECT
+        EXIT_WHERE [label="EXIT WHERE"]
+        call0_VAL_3 -> EXIT_WHERE
+        EXIT_FROM -> EXIT_WHERE
 
-        select_all [label="*"]
-        SELECT -> select_all
-        select_all -> EXIT_Query
+        SELECT []
+        EXIT_SELECT [label = "EXIT SELECT"]
+
+        call0_Group_by [label = "GROUP BY Statement", shape=rectangle]
+        EXIT_WHERE -> SELECT
+        EXIT_WHERE -> call0_Group_by
+        call0_Group_by -> SELECT
+        
+        SELECT_DISTINCT [label = "DISTINCT?"]
+        SELECT_TIES [label = "WITH TIES"]
+        SELECT_PERCENT [label = "PERCENT"]
+        SELECT_TOP [label = "TOP"]
+        call43_types [TYPES="[numeric]", label="numeric"]
+        SELECT_WITH_TIES [label = "WITH TIES"]
+        SELECT_distinct_end [label = ";"]
+        SELECT_percent_end [label = ";"]
+        TOP_EXPR[label="TOP expression"]
+        SELECT -> SELECT_DISTINCT
+        SELECT_DISTINCT -> SELECT_distinct_end
+        SELECT -> SELECT_distinct_end
+        SELECT_distinct_end -> SELECT_TOP
+        SELECT_TOP -> TOP_EXPR
+        TOP_EXPR -> SELECT_PERCENT
+        SELECT_PERCENT -> SELECT_percent_end
+        TOP_EXPR -> SELECT_percent_end
+        SELECT_percent_end -> SELECT_WITH_TIES
+
+
+        call0_SELECT_projection [label="generate projection", shape=rectangle]
+        SELECT_WITH_TIES -> call0_SELECT_projection
+        SELECT_distinct_end -> call0_SELECT_projection
+        SELECT_percent_end -> call0_SELECT_projection
+
+        call0_HAVING [label="HAVING?",shape=rectangle]
+        
+        call0_SELECT_projection -> call0_HAVING
+        
+        call0_HAVING -> EXIT_Query
+        
     }
-
+    
     subgraph def_VAL_3 {
         VAL_3 [shape=rectangle, label="3VL Value"]
         EXIT_VAL_3 [shape=rectangle, label="EXIT 3VL Value"]
@@ -101,7 +140,7 @@ digraph G {
         call1_types_all [label="TYPES: ALL", shape=rectangle]
         IsDistinctNOT [label="NOT"]
         DISTINCT []
-        call21_types [TYPES="[compatible]", label="TYPES: SAME TYPE", shape=rectangle]
+        call21_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle]
         VAL_3 -> IsDistinctFrom
         IsDistinctFrom -> call1_types_all
         call1_types_all -> IsDistinctNOT
@@ -128,7 +167,7 @@ digraph G {
         call2_types_all -> InListNot
         InListNot -> InListIn
         call2_types_all -> InListIn
-        call1_list_expr [TYPES="[compatible]", label="list expr\nTYPES: SAME TYPE", shape=rectangle]
+        call1_list_expr [TYPES="[compatible]", label="list expr\nTYPES: [compatible]", shape=rectangle]
         InListIn -> call1_list_expr
         call1_list_expr -> EXIT_VAL_3
 
@@ -141,7 +180,7 @@ digraph G {
         call3_types_all -> InSubqueryNot
         InSubqueryNot -> InSubqueryIn
         call3_types_all -> InSubqueryIn
-        call3_Query [TYPES="[compatible]", MOD="[]", label="Query\nTYPE: SAME TYPE", shape=rectangle]
+        call3_Query [TYPES="[compatible]", MOD="[]", label="Query\nTYPE: [compatible]", shape=rectangle]
         InSubqueryIn -> call3_Query
         call3_Query -> EXIT_VAL_3
 
@@ -152,10 +191,10 @@ digraph G {
         call4_types_all [label="TYPES: ALL", shape=rectangle]
         Between -> call4_types_all
         call4_types_all -> BetweenBetween
-        call22_types [TYPES="[compatible]", label="TYPES: SAME TYPE", shape=rectangle]
+        call22_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle]
         BetweenBetween -> call22_types
         call22_types -> BetweenBetweenAnd
-        call23_types [TYPES="[compatible]", label="TYPES: SAME TYPE", shape=rectangle]
+        call23_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle]
         BetweenBetweenAnd -> call23_types
         call23_types -> EXIT_VAL_3
 
@@ -167,7 +206,7 @@ digraph G {
         VAL_3 -> BinaryComp
         call5_types_all [label="TYPES: ALL", shape=rectangle]
         BinaryComp -> call5_types_all
-        call24_types [TYPES="[compatible]", label="TYPES: SAME TYPE", shape=rectangle]
+        call24_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle]
         call5_types_all -> BinaryCompLess
         BinaryCompLess -> call24_types
         call5_types_all -> BinaryCompEqual
@@ -203,10 +242,10 @@ digraph G {
         AnyAllLessEqual -> AnyAllSelectIter
         AnyAllSelectOp -> AnyAllUnEqual
         AnyAllUnEqual -> AnyAllSelectIter
-        call4_Query [TYPES="[compatible]", label="Query\nTYPE: SAME TYPE(S)", shape=rectangle]
+        call4_Query [TYPES="[compatible]", label="Query\nTYPE: [compatible]", shape=rectangle]
         AnyAllSelectIter -> call4_Query
         call4_Query -> AnyAllAnyAll
-        call1_array [TYPES="[compatible]", label="array\nTYPE: SAME TYPE(S)", shape=rectangle]
+        call1_array [TYPES="[compatible]", label="array\nTYPE: [compatible]", shape=rectangle]
         AnyAllSelectIter -> call1_array
         call1_array -> AnyAllAnyAll
         AnyAllAnyAll -> AnyAllAnyAllAny
@@ -235,7 +274,7 @@ digraph G {
         call27_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle]
         BinaryBooleanOpV3 -> call27_types
         call27_types -> BinaryBooleanOpV3AND
-        call28_types [TYPES="[compatible]", label="TYPES: SAME TYPE", shape=rectangle]
+        call28_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle]
         BinaryBooleanOpV3AND -> call28_types
         call27_types -> BinaryBooleanOpV3OR
         BinaryBooleanOpV3OR -> call28_types
@@ -546,143 +585,195 @@ digraph G {
         list_expr_element_exit -> EXIT_list_expr
     }
 
-    subgraph ignore {
-        "SELECT" -> "GROUPING"
-        "SELECT" -> "NO-GROUPING"
-        "GROUPING" -> GROUPBYClause
-        GROUPBYClause [label = "GROUP BY clause"]
-        HAVINGClause [label = "HAVING clause"]
-        GROUPBYClause -> HAVINGClause -> "generate projection"
-        GROUPBYClause -> "generate projection"
+    subgraph def_group_by {
+        GROUP_BY [label="GROUP BY", shape=rectangle]
+        column_expression [label="column expression"]
+        Grouping_rollup [label="rollup"]
+        Grouping_cube [label="cube"]
+        Grouping_set [label="Grouping set"]
+        group_by_col_list [label="array of columns\nTYPES: STRING", TYPES="string"]
+        //columns must appear in FROM, but not necesserily in SELECT
+        GROUP_BY -> group_by_col_list
+        GROUP_BY -> Grouping_rollup
+        GROUP_BY -> Grouping_cube
+        GROUP_BY -> Grouping_set
+        
+        Grouping_set -> group_by_col_list
+        Grouping_set -> Grouping_cube
+        Grouping_set -> Grouping_rollup
+        
+        Grouping_rollup -> group_by_col_list
+        Grouping_cube -> group_by_col_list
+        group_by_col_list -> column_expression
+        column_expression -> group_by_col_list
+        
+        EXIT_GROUP_BY [label="EXIT GROUP BY"]
+        column_expression -> EXIT_GROUP_BY
+        
+        EXIT_SELECT -> GROUP_BY [color=none] # visual
 
-        "EXIT SELECT" -> "GROUP BY clause" [color=none] # visual
-        "GROUP BY clause" -> "single grouping element"
-        "GROUP BY clause" -> "concatenated grouping"
-        "concatenated grouping" -> "concatEl"
-        "concatEl" -> "concatenated grouping"
-        "single grouping element" -> "GroupingEl"
-        "GroupingEl" [label="grouping element"]
-        "concatEl" [label="grouping element"]
-        "GroupingEl" -> "EXIT GROUPING"
-        "concatEl" -> "EXIT GROUPING"
-        "EXIT GROUPING" [label = "EXIT GROUP BY clause"]
+        
+    } 
 
-        "EXIT GROUPING" -> "grouping element" [color=none] # visual
-        "grouping element" -> "grand total"
-        "grouping element" -> "column reference"
-        "grouping element" -> "grouping sets"
+    subgraph def_SELECT_projection {
 
-        "grouping sets" -> "ordinary grouping sets"
-        "grouping sets" -> "rollup list"
-        "grouping sets" -> "cube list"
+        SELECT_projection [shape=rectangle, label = "SELECT projection"]
+        EXIT_SELECT_projection [label="EXIT SELECT projection"]
+        SELECT_list [label="SELECT list"]
+        SELECT_wildcard[label="wildcard"]
+        SELECT_qualified_wildcard[label="qualified wildcard"]
+        SELECT_unnamed_expr[label="unnamed expression"]
+        SELECT_expr_with_alias[label="expression with alias"]
+        EXIT_SELECT_list[label="EXIT SELECT list"]
+        
+        SELECT_projection -> SELECT_list
+        SELECT_projection -> SELECT_wildcard
+        SELECT_list -> SELECT_qualified_wildcard
+        SELECT_list -> SELECT_unnamed_expr
+        SELECT_list -> SELECT_expr_with_alias
+        
+        call0_aggr_function [OPTIONAL="t",label="aggregate function?", shape=rectangle]
+        
+        SELECT_wildcard -> EXIT_SELECT_projection
+        EXIT_SELECT_list -> EXIT_SELECT_projection
+        EXIT_SELECT_list -> SELECT_list
+        SELECT_qualified_wildcard -> call0_aggr_function
+        SELECT_unnamed_expr -> call0_aggr_function
+        SELECT_expr_with_alias -> call0_aggr_function
+        
+        call0_aggr_function -> EXIT_SELECT_list
 
-        "grouping element" [shape = rectangle]
-        "GROUPBYClause" [shape = rectangle]
-        HAVING [shape = rectangle]
-        "aggregate function" [shape = rectangle]
-        "GROUP BY clause" [shape = rectangle]
+        EXIT_GROUP_BY -> SELECT_projection [color=none] # visual
 
-
-
-        "column reference" -> "column name"
-        "ordinary grouping sets" -> set
-        set -> GroupingColumnName
-        GroupingColumnName -> set
-        GroupingColumnName [label = "column name"]
-        GroupingColumnName -> "ordinary grouping sets"
-
-        "rollup list" -> list
-        "cube list" -> list
-        list -> ListColumnName
-        ListColumnName -> list
-        ListColumnName [label = "column name"]
-        list -> "EXIT GROUPING ELEMENT"
-        set -> "EXIT GROUPING ELEMENT"
-        "grand total" -> "EXIT GROUPING ELEMENT"
-        "column name" -> "EXIT GROUPING ELEMENT"
-
-
-        EXIT_string -> HAVING [color=none]
-        HAVING [label = "HAVING clause"]
-        HAVING -> "HAVING conditions"
-        "HAVING conditions" -> BoolNot -> AggrBoolExpr
-        BoolNot [label = "NOT"]
-        "HAVING conditions" -> "atomic condition"
-        "HAVING AggrFunc" [label = "aggregate function"]
-        "atomic condition" ->"HAVING AggrFunc"
-        "atomic condition" -> AggrNot -> "HAVING AggrFunc"
-        AggrNot [label = "NOT"]
-        "HAVING AggrFunc" -> less
-        "HAVING AggrFunc" -> equal
-        "HAVING AggrFunc" -> loe
-        "HAVING AggrFunc" -> noneq
-        "HAVING conditions" -> AggrBoolExpr
-        AggrBoolExpr [label = "Bool Expression"]
-        AggrBoolExpr -> AggrOr -> SecondCond
-        AggrBoolExpr -> AggrAnd -> SecondCond
-        AggrBoolExpr -> AggrXor -> SecondCond
-        AggrOr [label = "OR"]
-        AggrAnd [label = "AND"]
-        AggrXor [label = "XOR"]
-        SecondCond [label = "HAVING conditions"]
-        less [label = "<"]
-        equal [label = "="]
-        loe [label = "<="]
-        noneq [label = "<>"]
-        "num val" [label = "numeric value"]
-        less -> "num val"
-        loe -> "num val"
-        equal -> "num val"
-        noneq -> "num val"
-
-        "num val" -> "EXIT HAVING"
-
-
-        "EXIT GROUPING ELEMENT" -> "aggregate function" [color=none]
-        "aggregate function" -> COUNT -> arg
-        "aggregate function" -> SUM -> arg
-        "aggregate function" -> AVG -> arg
-        "aggregate function" -> MIN -> arg
-        "aggregate function" -> MAX -> arg
-        arg [label = "function parameter"]
-        arg -> AggrNone
-        AggrNone [label = "None"]
-        arg -> ALL -> AggrExpr
-        arg -> aggrDistinct -> AggrExpr
-        aggrDistinct [label = "DISTINCT"]
-        arg -> AggrExpr
-        AggrExpr [label = "column name"]
-
-        AggrExpr -> "AGGREGATE WITH ALIAS"
-        AggrNone -> "AGGREGATE WITH ALIAS"
-        AggrExpr -> "AGGREGATE WITHOUT ALIAS"
-        AggrNone -> "AGGREGATE WITHOUT ALIAS"
-        "AGGREGATE WITHOUT ALIAS" -> "EXIT AGGREGATE"
-        "AGGREGATE WITH ALIAS" -> "EXIT AGGREGATE"
-
-        "NO-GROUPING" -> selectDistinct
-        "NO-GROUPING" -> "non-DISTINCT"
-        selectDistinct -> "generate projection"
-        "non-DISTINCT" -> "generate projection"
-        selectDistinct [label = "DISTINCT"]
-
-        "generate projection" -> "wildcard"
-        "generate projection" -> "value"
-
-        "value" -> "qualified wildcard"
-        "qualified wildcard" -> "EXIT value"
-        "value" -> "AggrInProjection" -> "select-expression"
-        "value" -> "select-expression"
-        "select-expression" -> "unnamed expression"
-        "unnamed expression" -> "EXIT value"
-        "select-expression" -> "expression with alias"
-        "expression with alias" -> "EXIT value"
-
-        AggrInProjection [label = "Aggregate function"]
-
-        "wildcard" -> "EXIT SELECT"
-        "EXIT value" -> "EXIT SELECT"
-        "EXIT value" -> "value"
     }
+
+    subgraph def_aggregate_function {
+        aggr_function [label="aggregate function"]
+        EXIT_fun_choice [label=";"]
+        EXIT_aggr [label="EXIT aggregate function"]
+        
+        aggr_distinct [OPTIONAL="t",label = "DISTINCT?"]
+        aggr_distinct -> EXIT_aggr
+
+        EXIT_fun_choice -> EXIT_aggr
+        EXIT_fun_choice -> aggr_distinct
+        
+        AVG[label="AVG\nTYPE: [numeric]", TYPE="[numeric]"]
+        call32_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> AVG
+        AVG -> call32_types 
+        call32_types -> EXIT_fun_choice
+        AVG -> EXIT_fun_choice
+
+        CHECKSUM_AGG[label="CHECKSUM_AGG\nTYPE: [numeric]", TYPE="[numeric]"]
+        call33_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> CHECKSUM_AGG
+        CHECKSUM_AGG -> call33_types 
+        call33_types -> EXIT_fun_choice
+        
+        COUNT[label="COUNT\nTYPE: [numeric]", TYPE="[numeric]"]
+        call34_types [TYPES="ANY", label="TYPES: ANY", shape=rectangle]
+        COUNT_wildcard [label="wildcard"]
+        aggr_function -> COUNT
+        COUNT -> call34_types
+        COUNT -> COUNT_wildcard
+        COUNT_wildcard -> EXIT_fun_choice
+        call34_types -> EXIT_fun_choice
+        
+        COUNT_BIG[label="COUNT_BIG\nTYPE: [numeric]", TYPE="[numeric]"]
+        call35_types [TYPES="ANY", label="TYPES: ANY", shape=rectangle]
+        COUNT_BIG_wildcard [label="wildcard"]
+        aggr_function -> COUNT_BIG
+        COUNT_BIG -> call35_types
+        COUNT_BIG -> COUNT_BIG_wildcard
+        COUNT_BIG_wildcard -> EXIT_fun_choice
+        call35_types -> EXIT_fun_choice
+        
+        MAX[label="MAX\nTYPES: SAME", TYPES="SAME"]
+        call36_types [TYPES="ANY", label="TYPES: ANY", shape=rectangle]
+        aggr_function -> MAX
+        MAX -> call36_types 
+        call36_types -> EXIT_fun_choice
+
+        MIN[label="MIN\nTYPE: SAME", TYPE="SAME"]
+        call37_types [TYPES="ANY", label="TYPES: ANY", shape=rectangle]
+        aggr_function -> MIN
+        MIN -> call37_types 
+        call37_types -> EXIT_fun_choice
+    
+        STDDEV[label="STDDEV\nTYPE: [float]", TYPE="[float]"]
+        call38_types [TYPES="numeric", label="TYPES: numeric", shape=rectangle]
+        aggr_function -> STDDEV
+        STDDEV -> call38_types
+        call38_types -> EXIT_fun_choice
+    
+        STDEVP[label="STDEVP\nTYPE: [float]", TYPE="[float]"]
+        call39_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> STDEVP
+        STDEVP -> call39_types
+        call39_types -> EXIT_fun_choice
+
+        STRING_AGG[label="STRING_AGG\nTYPE: [string]", TYPE="[string]"]
+        call40_types [TYPES="ANY", label="TYPES: ANY", shape=rectangle]
+        STRING_AGG_arg [label="argument"]
+        separator [label="separator\nTYPES: [string]",TYPES="[string]"]
+        STRING_AGG -> separator
+        separator -> STRING_AGG_arg
+        aggr_function -> STRING_AGG
+        STRING_AGG_arg -> call40_types
+        call40_types -> EXIT_fun_choice
+
+        SUM[label="SUM\nTYPE: [numeric]", TYPE="[numeric]"]
+        call41_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> SUM
+        SUM -> call41_types
+        call41_types -> EXIT_fun_choice
+
+        VAR[label="VAR\nTYPE: [float]", TYPE="[float]"]
+        call42_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> VAR
+        VAR -> call42_types
+        call42_types -> EXIT_fun_choice
+ 
+ 
+        VARP[label="VARP\nTYPE: [float]", TYPE="[float]"]
+        call44_types [TYPES="compatible", label="TYPES: compatible", shape=rectangle]
+        aggr_function -> VARP
+        VARP -> call44_types
+        call44_types -> EXIT_fun_choice
+        
+  }
+  
+    subgraph def_having {
+        
+        HAVING [label="HAVING", shape=rectangle]
+        EXIT_HAVING [label="EXIT HAVING"]
+        
+        EXIT_aggr -> HAVING [color="none"] #visual
+        
+        HAVING_condition [label="HAVING condition"]
+        HAVING -> HAVING_condition 
+        
+        HAVING_not [OPTIONAL="t", label="NOT?"]
+        call45_types [TYPE="[3VL]", label="TYPE: [3VL]", shape=rectangle]
+        call46_types [TYPE="[3VL]", label="TYPE: [3VL]", shape=rectangle]
+        HAVING_logical_expr [OPTIONAL="t", label = "AND | OR ?"]
+        
+        HAVING_condition -> HAVING_not
+        HAVING_condition -> call45_types
+        
+        
+        call45_types -> HAVING_logical_expr
+        HAVING_not -> call45_types
+        
+        HAVING_not_optional [OPTIONAL="t", label="NOT?"]
+        HAVING_logical_expr -> HAVING_not_optional 
+        HAVING_not_optional -> call46_types
+        HAVING_logical_expr -> call46_types
+        
+        call45_types -> EXIT_HAVING
+        call46_types -> EXIT_HAVING
+    } 
+    
 
 }
