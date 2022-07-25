@@ -91,22 +91,20 @@ digraph G {
         call0_Group_by -> SELECT
         
         SELECT_DISTINCT [label = "DISTINCT?"]
-        SELECT_TIES [label = "WITH TIES"]
         SELECT_PERCENT [label = "PERCENT"]
         SELECT_TOP [label = "TOP"]
         call43_types [TYPES="[numeric]", label="numeric"]
         SELECT_WITH_TIES [label = "WITH TIES"]
         SELECT_distinct_end [label = ";"]
         SELECT_percent_end [label = ";"]
-        TOP_EXPR[label="TOP expression"]
         SELECT -> SELECT_DISTINCT
         SELECT_DISTINCT -> SELECT_distinct_end
         SELECT -> SELECT_distinct_end
         SELECT_distinct_end -> SELECT_TOP
-        SELECT_TOP -> TOP_EXPR
-        TOP_EXPR -> SELECT_PERCENT
+        SELECT_TOP -> call43_types
+        call43_types -> SELECT_PERCENT
         SELECT_PERCENT -> SELECT_percent_end
-        TOP_EXPR -> SELECT_percent_end
+        call43_types -> SELECT_percent_end
         SELECT_percent_end -> SELECT_WITH_TIES
 
 
@@ -117,7 +115,8 @@ digraph G {
 
         call0_HAVING [label="HAVING?",shape=rectangle]
         
-        call0_SELECT_projection -> call0_HAVING
+        call0_SELECT_projection -> EXIT_SELECT
+        EXIT_SELECT -> call0_HAVING
         
         call0_HAVING -> EXIT_Query
         
@@ -610,7 +609,7 @@ digraph G {
         EXIT_GROUP_BY [label="EXIT GROUP BY"]
         column_expression -> EXIT_GROUP_BY
         
-        EXIT_SELECT -> GROUP_BY [color=none] # visual
+        EXIT_Query -> GROUP_BY [color=none] # visual
 
         
     } 
