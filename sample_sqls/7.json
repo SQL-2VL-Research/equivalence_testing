@@ -1,0 +1,745 @@
+[
+  {
+    "Query": {
+      "with": null,
+      "body": {
+        "Select": {
+          "distinct": false,
+          "top": null,
+          "projection": [
+            {
+              "UnnamedExpr": {
+                "Identifier": {
+                  "value": "supp_nation",
+                  "quote_style": null
+                }
+              }
+            },
+            {
+              "UnnamedExpr": {
+                "Identifier": {
+                  "value": "cust_nation",
+                  "quote_style": null
+                }
+              }
+            },
+            {
+              "UnnamedExpr": {
+                "Identifier": {
+                  "value": "l_year",
+                  "quote_style": null
+                }
+              }
+            },
+            {
+              "ExprWithAlias": {
+                "expr": {
+                  "Function": {
+                    "name": [
+                      {
+                        "value": "SUM",
+                        "quote_style": null
+                      }
+                    ],
+                    "args": [
+                      {
+                        "Unnamed": {
+                          "Expr": {
+                            "Identifier": {
+                              "value": "volume",
+                              "quote_style": null
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "over": null,
+                    "distinct": false
+                  }
+                },
+                "alias": {
+                  "value": "revenue",
+                  "quote_style": null
+                }
+              }
+            }
+          ],
+          "into": null,
+          "from": [
+            {
+              "relation": {
+                "Derived": {
+                  "lateral": false,
+                  "subquery": {
+                    "with": null,
+                    "body": {
+                      "Select": {
+                        "distinct": false,
+                        "top": null,
+                        "projection": [
+                          {
+                            "ExprWithAlias": {
+                              "expr": {
+                                "CompoundIdentifier": [
+                                  {
+                                    "value": "n1",
+                                    "quote_style": null
+                                  },
+                                  {
+                                    "value": "n_name",
+                                    "quote_style": null
+                                  }
+                                ]
+                              },
+                              "alias": {
+                                "value": "supp_nation",
+                                "quote_style": null
+                              }
+                            }
+                          },
+                          {
+                            "ExprWithAlias": {
+                              "expr": {
+                                "CompoundIdentifier": [
+                                  {
+                                    "value": "n2",
+                                    "quote_style": null
+                                  },
+                                  {
+                                    "value": "n_name",
+                                    "quote_style": null
+                                  }
+                                ]
+                              },
+                              "alias": {
+                                "value": "cust_nation",
+                                "quote_style": null
+                              }
+                            }
+                          },
+                          {
+                            "ExprWithAlias": {
+                              "expr": {
+                                "Function": {
+                                  "name": [
+                                    {
+                                      "value": "YEAR",
+                                      "quote_style": null
+                                    }
+                                  ],
+                                  "args": [
+                                    {
+                                      "Unnamed": {
+                                        "Expr": {
+                                          "Identifier": {
+                                            "value": "l_shipdate",
+                                            "quote_style": null
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "over": null,
+                                  "distinct": false
+                                }
+                              },
+                              "alias": {
+                                "value": "l_year",
+                                "quote_style": null
+                              }
+                            }
+                          },
+                          {
+                            "ExprWithAlias": {
+                              "expr": {
+                                "BinaryOp": {
+                                  "left": {
+                                    "Identifier": {
+                                      "value": "l_extendedprice",
+                                      "quote_style": null
+                                    }
+                                  },
+                                  "op": "Multiply",
+                                  "right": {
+                                    "Nested": {
+                                      "BinaryOp": {
+                                        "left": {
+                                          "Value": {
+                                            "Number": [
+                                              "1",
+                                              false
+                                            ]
+                                          }
+                                        },
+                                        "op": "Minus",
+                                        "right": {
+                                          "Identifier": {
+                                            "value": "l_discount",
+                                            "quote_style": null
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "alias": {
+                                "value": "volume",
+                                "quote_style": null
+                              }
+                            }
+                          }
+                        ],
+                        "into": null,
+                        "from": [
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "supplier",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": null,
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          },
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "lineitem",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": null,
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          },
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "orders",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": null,
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          },
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "customer",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": null,
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          },
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "nation",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": {
+                                  "name": {
+                                    "value": "n1",
+                                    "quote_style": null
+                                  },
+                                  "columns": []
+                                },
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          },
+                          {
+                            "relation": {
+                              "Table": {
+                                "name": [
+                                  {
+                                    "value": "nation",
+                                    "quote_style": null
+                                  }
+                                ],
+                                "alias": {
+                                  "name": {
+                                    "value": "n2",
+                                    "quote_style": null
+                                  },
+                                  "columns": []
+                                },
+                                "args": null,
+                                "with_hints": []
+                              }
+                            },
+                            "joins": []
+                          }
+                        ],
+                        "lateral_views": [],
+                        "selection": {
+                          "BinaryOp": {
+                            "left": {
+                              "BinaryOp": {
+                                "left": {
+                                  "BinaryOp": {
+                                    "left": {
+                                      "BinaryOp": {
+                                        "left": {
+                                          "BinaryOp": {
+                                            "left": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "BinaryOp": {
+                                                    "left": {
+                                                      "Identifier": {
+                                                        "value": "s_suppkey",
+                                                        "quote_style": null
+                                                      }
+                                                    },
+                                                    "op": "Eq",
+                                                    "right": {
+                                                      "Identifier": {
+                                                        "value": "l_suppkey",
+                                                        "quote_style": null
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "op": "And",
+                                                "right": {
+                                                  "BinaryOp": {
+                                                    "left": {
+                                                      "Identifier": {
+                                                        "value": "o_orderkey",
+                                                        "quote_style": null
+                                                      }
+                                                    },
+                                                    "op": "Eq",
+                                                    "right": {
+                                                      "Identifier": {
+                                                        "value": "l_orderkey",
+                                                        "quote_style": null
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "op": "And",
+                                            "right": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "Identifier": {
+                                                    "value": "c_custkey",
+                                                    "quote_style": null
+                                                  }
+                                                },
+                                                "op": "Eq",
+                                                "right": {
+                                                  "Identifier": {
+                                                    "value": "o_custkey",
+                                                    "quote_style": null
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "op": "And",
+                                        "right": {
+                                          "BinaryOp": {
+                                            "left": {
+                                              "Identifier": {
+                                                "value": "s_nationkey",
+                                                "quote_style": null
+                                              }
+                                            },
+                                            "op": "Eq",
+                                            "right": {
+                                              "CompoundIdentifier": [
+                                                {
+                                                  "value": "n1",
+                                                  "quote_style": null
+                                                },
+                                                {
+                                                  "value": "n_nationkey",
+                                                  "quote_style": null
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "op": "And",
+                                    "right": {
+                                      "BinaryOp": {
+                                        "left": {
+                                          "Identifier": {
+                                            "value": "c_nationkey",
+                                            "quote_style": null
+                                          }
+                                        },
+                                        "op": "Eq",
+                                        "right": {
+                                          "CompoundIdentifier": [
+                                            {
+                                              "value": "n2",
+                                              "quote_style": null
+                                            },
+                                            {
+                                              "value": "n_nationkey",
+                                              "quote_style": null
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "op": "And",
+                                "right": {
+                                  "Nested": {
+                                    "BinaryOp": {
+                                      "left": {
+                                        "Nested": {
+                                          "BinaryOp": {
+                                            "left": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "CompoundIdentifier": [
+                                                    {
+                                                      "value": "n1",
+                                                      "quote_style": null
+                                                    },
+                                                    {
+                                                      "value": "n_name",
+                                                      "quote_style": null
+                                                    }
+                                                  ]
+                                                },
+                                                "op": "Eq",
+                                                "right": {
+                                                  "Value": {
+                                                    "SingleQuotedString": "FRANCE"
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "op": "And",
+                                            "right": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "CompoundIdentifier": [
+                                                    {
+                                                      "value": "n2",
+                                                      "quote_style": null
+                                                    },
+                                                    {
+                                                      "value": "n_name",
+                                                      "quote_style": null
+                                                    }
+                                                  ]
+                                                },
+                                                "op": "Eq",
+                                                "right": {
+                                                  "Value": {
+                                                    "SingleQuotedString": "GERMANY"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "op": "Or",
+                                      "right": {
+                                        "Nested": {
+                                          "BinaryOp": {
+                                            "left": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "CompoundIdentifier": [
+                                                    {
+                                                      "value": "n1",
+                                                      "quote_style": null
+                                                    },
+                                                    {
+                                                      "value": "n_name",
+                                                      "quote_style": null
+                                                    }
+                                                  ]
+                                                },
+                                                "op": "Eq",
+                                                "right": {
+                                                  "Value": {
+                                                    "SingleQuotedString": "GERMANY"
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "op": "And",
+                                            "right": {
+                                              "BinaryOp": {
+                                                "left": {
+                                                  "CompoundIdentifier": [
+                                                    {
+                                                      "value": "n2",
+                                                      "quote_style": null
+                                                    },
+                                                    {
+                                                      "value": "n_name",
+                                                      "quote_style": null
+                                                    }
+                                                  ]
+                                                },
+                                                "op": "Eq",
+                                                "right": {
+                                                  "Value": {
+                                                    "SingleQuotedString": "FRANCE"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "op": "And",
+                            "right": {
+                              "Between": {
+                                "expr": {
+                                  "Identifier": {
+                                    "value": "l_shipdate",
+                                    "quote_style": null
+                                  }
+                                },
+                                "negated": false,
+                                "low": {
+                                  "Function": {
+                                    "name": [
+                                      {
+                                        "value": "MDY",
+                                        "quote_style": null
+                                      }
+                                    ],
+                                    "args": [
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "1",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "1",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "1995",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "over": null,
+                                    "distinct": false
+                                  }
+                                },
+                                "high": {
+                                  "Function": {
+                                    "name": [
+                                      {
+                                        "value": "MDY",
+                                        "quote_style": null
+                                      }
+                                    ],
+                                    "args": [
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "12",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "31",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "Unnamed": {
+                                          "Expr": {
+                                            "Value": {
+                                              "Number": [
+                                                "1996",
+                                                false
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "over": null,
+                                    "distinct": false
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "group_by": [],
+                        "cluster_by": [],
+                        "distribute_by": [],
+                        "sort_by": [],
+                        "having": null,
+                        "qualify": null
+                      }
+                    },
+                    "order_by": [],
+                    "limit": null,
+                    "offset": null,
+                    "fetch": null,
+                    "lock": null
+                  },
+                  "alias": {
+                    "name": {
+                      "value": "shipping",
+                      "quote_style": null
+                    },
+                    "columns": []
+                  }
+                }
+              },
+              "joins": []
+            }
+          ],
+          "lateral_views": [],
+          "selection": null,
+          "group_by": [
+            {
+              "Identifier": {
+                "value": "supp_nation",
+                "quote_style": null
+              }
+            },
+            {
+              "Identifier": {
+                "value": "cust_nation",
+                "quote_style": null
+              }
+            },
+            {
+              "Identifier": {
+                "value": "l_year",
+                "quote_style": null
+              }
+            }
+          ],
+          "cluster_by": [],
+          "distribute_by": [],
+          "sort_by": [],
+          "having": null,
+          "qualify": null
+        }
+      },
+      "order_by": [
+        {
+          "expr": {
+            "Identifier": {
+              "value": "supp_nation",
+              "quote_style": null
+            }
+          },
+          "asc": null,
+          "nulls_first": null
+        },
+        {
+          "expr": {
+            "Identifier": {
+              "value": "cust_nation",
+              "quote_style": null
+            }
+          },
+          "asc": null,
+          "nulls_first": null
+        },
+        {
+          "expr": {
+            "Identifier": {
+              "value": "l_year",
+              "quote_style": null
+            }
+          },
+          "asc": null,
+          "nulls_first": null
+        }
+      ],
+      "limit": null,
+      "offset": null,
+      "fetch": null,
+      "lock": null
+    }
+  }
+]

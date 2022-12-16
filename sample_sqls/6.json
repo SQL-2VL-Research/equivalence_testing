@@ -1,0 +1,311 @@
+[
+  {
+    "Query": {
+      "with": null,
+      "body": {
+        "Select": {
+          "distinct": false,
+          "top": null,
+          "projection": [
+            {
+              "ExprWithAlias": {
+                "expr": {
+                  "Function": {
+                    "name": [
+                      {
+                        "value": "SUM",
+                        "quote_style": null
+                      }
+                    ],
+                    "args": [
+                      {
+                        "Unnamed": {
+                          "Expr": {
+                            "BinaryOp": {
+                              "left": {
+                                "Identifier": {
+                                  "value": "l_extendedprice",
+                                  "quote_style": null
+                                }
+                              },
+                              "op": "Multiply",
+                              "right": {
+                                "Identifier": {
+                                  "value": "l_discount",
+                                  "quote_style": null
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "over": null,
+                    "distinct": false
+                  }
+                },
+                "alias": {
+                  "value": "revenue",
+                  "quote_style": null
+                }
+              }
+            }
+          ],
+          "into": null,
+          "from": [
+            {
+              "relation": {
+                "Table": {
+                  "name": [
+                    {
+                      "value": "lineitem",
+                      "quote_style": null
+                    }
+                  ],
+                  "alias": null,
+                  "args": null,
+                  "with_hints": []
+                }
+              },
+              "joins": []
+            }
+          ],
+          "lateral_views": [],
+          "selection": {
+            "BinaryOp": {
+              "left": {
+                "BinaryOp": {
+                  "left": {
+                    "BinaryOp": {
+                      "left": {
+                        "BinaryOp": {
+                          "left": {
+                            "Identifier": {
+                              "value": "l_shipdate",
+                              "quote_style": null
+                            }
+                          },
+                          "op": "GtEq",
+                          "right": {
+                            "Function": {
+                              "name": [
+                                {
+                                  "value": "MDY",
+                                  "quote_style": null
+                                }
+                              ],
+                              "args": [
+                                {
+                                  "Unnamed": {
+                                    "Expr": {
+                                      "Value": {
+                                        "Number": [
+                                          "1",
+                                          false
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "Unnamed": {
+                                    "Expr": {
+                                      "Value": {
+                                        "Number": [
+                                          "1",
+                                          false
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "Unnamed": {
+                                    "Expr": {
+                                      "Value": {
+                                        "Number": [
+                                          "1994",
+                                          false
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              ],
+                              "over": null,
+                              "distinct": false
+                            }
+                          }
+                        }
+                      },
+                      "op": "And",
+                      "right": {
+                        "BinaryOp": {
+                          "left": {
+                            "Identifier": {
+                              "value": "l_shipdate",
+                              "quote_style": null
+                            }
+                          },
+                          "op": "Lt",
+                          "right": {
+                            "BinaryOp": {
+                              "left": {
+                                "Function": {
+                                  "name": [
+                                    {
+                                      "value": "MDY",
+                                      "quote_style": null
+                                    }
+                                  ],
+                                  "args": [
+                                    {
+                                      "Unnamed": {
+                                        "Expr": {
+                                          "Value": {
+                                            "Number": [
+                                              "1",
+                                              false
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "Unnamed": {
+                                        "Expr": {
+                                          "Value": {
+                                            "Number": [
+                                              "1",
+                                              false
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "Unnamed": {
+                                        "Expr": {
+                                          "Value": {
+                                            "Number": [
+                                              "1994",
+                                              false
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "over": null,
+                                  "distinct": false
+                                }
+                              },
+                              "op": "Plus",
+                              "right": {
+                                "Value": {
+                                  "Number": [
+                                    "1",
+                                    false
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "op": "And",
+                  "right": {
+                    "Between": {
+                      "expr": {
+                        "Identifier": {
+                          "value": "l_discount",
+                          "quote_style": null
+                        }
+                      },
+                      "negated": false,
+                      "low": {
+                        "BinaryOp": {
+                          "left": {
+                            "Value": {
+                              "Number": [
+                                ".06",
+                                false
+                              ]
+                            }
+                          },
+                          "op": "Minus",
+                          "right": {
+                            "Value": {
+                              "Number": [
+                                "0.01",
+                                false
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      "high": {
+                        "BinaryOp": {
+                          "left": {
+                            "Value": {
+                              "Number": [
+                                ".06",
+                                false
+                              ]
+                            }
+                          },
+                          "op": "Plus",
+                          "right": {
+                            "Value": {
+                              "Number": [
+                                "0.010001",
+                                false
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "op": "And",
+              "right": {
+                "BinaryOp": {
+                  "left": {
+                    "Identifier": {
+                      "value": "l_quantity",
+                      "quote_style": null
+                    }
+                  },
+                  "op": "Lt",
+                  "right": {
+                    "Value": {
+                      "Number": [
+                        "24",
+                        false
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "group_by": [],
+          "cluster_by": [],
+          "distribute_by": [],
+          "sort_by": [],
+          "having": null,
+          "qualify": null
+        }
+      },
+      "order_by": [],
+      "limit": null,
+      "offset": null,
+      "fetch": null,
+      "lock": null
+    }
+  }
+]

@@ -1,0 +1,109 @@
+digraph G {
+
+Query -> "generate FROM"
+
+"generate FROM" -> "table"
+"generate FROM" -> "from-subquery"
+"relation with joins" -> "table"
+"table" -> "relation with joins"
+"relation with joins" -> "from-subquery"
+"from-subquery" -> "relation with joins"
+
+
+"from-subquery" [shape=rectangle]
+
+"relation with joins" -> "generate SELECT"
+
+"generate SELECT" -> DISTINCT
+"generate SELECT" -> "non-DISTINCT"
+DISTINCT -> "generate projection"
+"non-DISTINCT" -> "generate projection"
+
+"generate projection" -> wildcard
+"generate projection" -> value
+value -> "qualified wildcard"
+"qualified wildcard" -> value
+value -> "select-expression"
+"select-expression" -> "unnamed expression"
+"unnamed expression" -> value
+"select-expression" -> "expression with alias"
+"expression with alias" -> value
+
+value -> "generate WHERE"
+wildcard -> "generate WHERE"
+
+"generate WHERE" -> EXISTS
+EXISTS -> "negation"
+EXISTS -> "no-negation"
+"negation" -> "where-subquery"
+"no-negation" -> "where-subquery"
+"where-subquery" -> "generate WHERE"
+
+"where-subquery" [shape=rectangle]
+"generate WHERE" -> "condition"
+"generate WHERE" -> "ISNULL"
+
+"condition" -> "left column"
+"condition" -> "left value"
+"condition" -> "left numeric\nexpression"
+
+"numeric expression" -> "ne left column"
+"numeric expression" -> "ne left value"
+"numeric expression" -> "ne left numeric\nsubexpression"
+"ne left numeric\nsubexpression" [shape=rectangle]
+
+"ne left column" -> "+"
+"ne left value" -> "+"
+"ne left numeric\nsubexpression" -> "+"
+"ne left column" -> "-"
+"ne left value" -> "-"
+"ne left numeric\nsubexpression" -> "-"
+"ne left column" -> "*"
+"ne left value" -> "*"
+"ne left numeric\nsubexpression" -> "*"
+"ne left column" -> "/"
+"ne left value" -> "/"
+"ne left numeric\nsubexpression" -> "/"
+
+"+" -> "ne right column"
+"+" -> "ne right value"
+"+" -> "ne right numeric\nsubexpression"
+"-" -> "ne right column"
+"-" -> "ne right value"
+"-" -> "ne right numeric\nsubexpression"
+"*" -> "ne right column"
+"*" -> "ne right value"
+"*" -> "ne right numeric\nsubexpression"
+"/" -> "ne right column"
+"/" -> "ne right value"
+"/" -> "ne right numeric\nsubexpression"
+
+"ne right column" -> "ne EXIT"
+"ne right value" -> "ne EXIT"
+"ne right numeric\nsubexpression" -> "ne EXIT"
+"ne right numeric\nsubexpression" [shape=rectangle]
+
+"left column" -> "<"
+"left value" -> "<"
+"left numeric\nexpression" -> "<"
+"left column" -> "<="
+"left value" -> "<="
+"left numeric\nexpression" -> "<="
+"left column" -> "="
+"left value" -> "="
+"left numeric\nexpression" -> "="
+"<" -> "right column"
+"<" -> "right value"
+"<" -> "right numeric\nexpression"
+"<=" -> "right column"
+"<=" -> "right value"
+"<=" -> "right numeric\nexpression"
+"=" -> "right column"
+"=" -> "right value"
+"=" -> "right numeric\nexpression"
+
+"ISNULL" -> EXIT
+"right column" -> EXIT
+"right value" -> EXIT
+"right numeric\nexpression" -> EXIT
+}
