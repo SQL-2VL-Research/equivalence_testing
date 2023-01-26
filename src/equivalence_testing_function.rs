@@ -9,7 +9,7 @@ use sqlparser::ast::{
 use sqlparser::dialect::{PostgreSqlDialect, Dialect, MySqlDialect};
 
 
-fn string_to_query(input: &str) -> Box<Query> {
+pub fn string_to_query(input: &str) -> Box<Query> {
     let dialect = PostgreSqlDialect {};
     let ast = Parser::parse_sql(&dialect, input).unwrap();
     match ast.into_iter().next().expect("No single query in sql file") {
@@ -224,7 +224,7 @@ fn check_expr (expr: Expr) -> bool {
                 if (!check_expr(el)) {
                     return false;
                 }
-            }
+            }   
         }, 
 
          // The `LISTAGG` function `SELECT LISTAGG(...) WITHIN GROUP (ORDER BY ...)`
