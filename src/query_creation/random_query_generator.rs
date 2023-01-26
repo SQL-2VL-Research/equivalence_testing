@@ -131,7 +131,7 @@ impl QueryGenerator {
         let mut select_limit = Option::<Expr>::None;
         if let Some(mods) = self.state_generator.get_modifiers() {
             if mods.contains(&SmolStr::new("single value")) {
-                select_limit = Some(Expr::Identifier(Ident::new("1")));
+                select_limit = Some(Expr::Value(Value::Number("1".to_string(), false)));
                 // TODO: Not only limits can enforce this
             } else {
                 panic!("Unexpected mods (Query): {:?}", mods);

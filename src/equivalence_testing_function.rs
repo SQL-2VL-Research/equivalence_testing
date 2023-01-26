@@ -21,10 +21,10 @@ pub fn string_to_query(input: &str) -> Box<Query> {
 //returns "true" if query is equivalent under both logics
 pub fn equivalence_tester (sql: &str) -> bool {
     let query = string_to_query(sql);
-    check_query(*query)
+    check_query(query)
 }
 
-pub fn check_query (query: Query) -> bool {
+pub fn check_query (query: Box<Query>) -> bool {
     let _body = query.body;
     let _select = match _body {
         SetExpr::Select(select) => select,
@@ -208,14 +208,14 @@ fn check_expr (expr: Expr) -> bool {
         /// `WHERE [ NOT ] EXISTS (SELECT ...)`.
         Expr::Exists {subquery, negated} => {
             if negated {
-                return check_query(*subquery);
+                return check_query(subquery);
             }
         },
         
         /// A parenthesized subquery `(SELECT ...)`, used in expression like
         /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`
         Expr::Subquery(subquery) => {
-            return check_query(*subquery);
+            return check_query(subquery);
         },
         
         // An array expression e.g. `ARRAY[1, 2]`
