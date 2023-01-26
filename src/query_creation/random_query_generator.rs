@@ -200,33 +200,44 @@ impl QueryGenerator {
         };
 
         self.expect_state("SELECT_projection");
-        while match self.next_state().as_str() {
-            "SELECT_list" => true,
-            "EXIT_SELECT" => false,
-            any => self.panic_unexpected(any)
-        } {
-            match self.next_state().as_str() {
-                "SELECT_wildcard" => select_body.projection.push(SelectItem::Wildcard),
-                "SELECT_qualified_wildcard" => {
-                    select_body.projection.push(SelectItem::QualifiedWildcard(ObjectName(vec![
-                        self.current_query_rm.get_random_relation().gen_ident()
-                    ])));
-                },
-                arm @ ("SELECT_unnamed_expr" | "SELECT_expr_with_alias") => {
-                    self.expect_state("call7_types_all");
-                    let expr = self.handle_types_all().1;
-                    select_body.projection.push(match arm {
-                        "SELECT_unnamed_expr" => SelectItem::UnnamedExpr(expr),
-                        "SELECT_expr_with_alias" => SelectItem::ExprWithAlias {
-                            expr, alias: self.gen_select_alias(),
+        match self.next_state().as_str() {
+            "PROJECTION" => {
+                while match self.next_state().as_str() {
+                    "SELECT_list" => true,
+                    "EXIT_SELECT" => false,
+                    any => self.panic_unexpected(any)
+                } {
+                    match self.next_state().as_str() {
+                        "SELECT_wildcard" => select_body.projection.push(SelectItem::Wildcard),
+                        "SELECT_qualified_wildcard" => {
+                            select_body.projection.push(SelectItem::QualifiedWildcard(ObjectName(vec![
+                                self.current_query_rm.get_random_relation().gen_ident()
+                            ])));
+                        },
+                        arm @ ("SELECT_unnamed_expr" | "SELECT_expr_with_alias") => {
+                            self.expect_state("call7_types_all");
+                            let expr = self.handle_types_all().1;
+                            select_body.projection.push(match arm {
+                                "SELECT_unnamed_expr" => SelectItem::UnnamedExpr(expr),
+                                "SELECT_expr_with_alias" => SelectItem::ExprWithAlias {
+                                    expr, alias: self.gen_select_alias(),
+                                },
+                                any => self.panic_unexpected(any)
+                            });
                         },
                         any => self.panic_unexpected(any)
-                    });
-                },
-                any => self.panic_unexpected(any)
-            };
-            self.expect_state("SELECT_list_multiple_values");
+                    };
+                    self.expect_state("SELECT_list_multiple_values");
+                }
+            }
+            "call0_aggregate" => {
+                select_body.projection.push(self.handle_aggregate());
+                self.expect_state("EXIT_aggregate");
+                self.expect_state("EXIT_SELECT");
+            }
+            any => self.panic_unexpected(any)
         }
+        
 
         self.expect_state("EXIT_Query");
         self.dynamic_model.stats.current_nest_level -= 1;
@@ -693,7 +704,7 @@ impl QueryGenerator {
         })
     }
 
-    /// subgraph def_list_expr
+    ///subgraph def_list_expr
     fn handle_list_expr(&mut self) -> Expr {
         self.expect_state("list_expr");
         let list_compat_type = match self.next_state().as_str() {
@@ -719,6 +730,67 @@ impl QueryGenerator {
         }
         Expr::Tuple(list_expr)
     }
+
+
+    fn generate_SelectItem (&mut self, function_name: &str, SelectedType: Option<TypesSelectedType>, compatible: Option<TypesSelectedType>) -> SelectItem {
+        let mut argument = function_name.to_owned();
+        let expr = self.handle_types(SelectedType, compatible).1;
+        argument.push_str("(");
+        argument.push_str(&expr.to_string());
+        argument.push_str(")");
+        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
+    }
+    /// subgraph def_aggregate
+    /// TODO: add alias, add boolean functions
+    fn handle_aggregate(&mut self) -> SelectItem {
+        self.expect_state("aggregate");
+        match self.next_state().as_str() {
+            "AVG" => {
+                self.expect_state("call52_types");
+                self.generate_SelectItem("AVG", Some(TypesSelectedType::Numeric), None)
+            },
+            "BIT_AND" => {
+                self.expect_state("call53_types");
+                self.generate_SelectItem("BIT_AND", Some(TypesSelectedType::Numeric), None)
+            },
+            "BIT_OR" => {
+                self.expect_state("call54_types");
+                self.generate_SelectItem("BIT_OR", Some(TypesSelectedType::Numeric), None)
+            },
+            "BIT_XOR" => {
+                self.expect_state("call55_types");
+                self.generate_SelectItem("BIT_XOR", Some(TypesSelectedType::Numeric), None)
+            },
+             "COUNT" => {
+                match self.next_state().as_str()  {
+                    "COUNT_wildcard" => {
+                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: ("COUNT(*)".to_string()), quote_style: (None)}))
+                    },
+                    "COUNT_distinct" => {
+                        self.expect_state("call8_types_all");
+                        let mut argument = "COUNT(DISTINCT ".to_owned();
+                        let expr = self.handle_types_all().1;
+                        argument.push_str(&expr.to_string());
+                        argument.push_str(")");
+                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
+                    },
+                    "call8_types_all" => {
+                        let mut argument = "COUNT(".to_owned();
+                        let expr = self.handle_types_all().1;
+                        argument.push_str(&expr.to_string());
+                        argument.push_str(")");
+                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
+                    },
+                    any => self.panic_unexpected(any),            
+                    
+                }
+
+            },
+            any => self.panic_unexpected(any),            
+        }
+    }
+
+
 
     /// starting point; calls handle_query for the first time
     fn generate(&mut self) -> Query {
