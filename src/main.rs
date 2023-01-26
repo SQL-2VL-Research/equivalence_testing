@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 mod equivalence_testing_function;
-use equivalence_testing_function::equivalence_tester;
 use equivalence_testing_function::check_query;
+use equivalence_testing_function::string_to_query;
 
 use equivalence_testing::query_creation::{
     random_query_generator::{QueryGenerator},
@@ -17,7 +17,7 @@ struct ProgramArgs {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
     /// number of generated queries
-    #[structopt(default_value = "100000")]
+    #[structopt(default_value = "20")]
     num_generate: usize,
 }
 
@@ -34,15 +34,16 @@ fn main() {
     let mut generator = QueryGenerator::from_state_generator(markov_generator);
 
     let mut counter = 0;
-    let mut eq = 0;
+    let mut equivalent = 0;
     for _ in 0..program_args.num_generate {
         let query = generator.next().unwrap();
-        //println!("Generated query: {:#?}", query.to_string());
+        println!("Generated query: {:#?}", query.to_string());
         let equivalence_value = check_query(query);
         //println!("Equivalent? {:#?}\n", equivalence_value);
-        counter+=1;
+        counter += 1;
         if equivalence_value {
-            eq+=1;}
+            equivalent += 1;}
     }
-    println!("{} / {}", eq, counter);
+    println!("equivalence? {} / {}", equivalent, counter);
+
 }
