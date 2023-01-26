@@ -2,10 +2,9 @@ use std::path::PathBuf;
 
 mod equivalence_testing_function;
 use equivalence_testing_function::check_query;
-use equivalence_testing_function::string_to_query;
 
 use equivalence_testing::query_creation::{
-    random_query_generator::{QueryGenerator},
+    random_query_generator::QueryGenerator,
     state_generators::MarkovChainGenerator,
 };
 use structopt::StructOpt;
@@ -42,8 +41,9 @@ fn main() {
         //println!("Equivalent? {:#?}\n", equivalence_value);
         counter += 1;
         if equivalence_value {
-            equivalent += 1;}
+            equivalent += 1;
+        }
     }
-    println!("equivalence? {} / {}", equivalent, counter);
+    println!("Equivalence: {} / {}", equivalent, counter);
 
 }

@@ -232,7 +232,6 @@ impl QueryGenerator {
             }
             "call0_aggregate" => {
                 select_body.projection.push(self.handle_aggregate());
-                self.expect_state("EXIT_aggregate");
                 self.expect_state("EXIT_SELECT");
             }
             any => self.panic_unexpected(any)
@@ -704,7 +703,7 @@ impl QueryGenerator {
         })
     }
 
-    ///subgraph def_list_expr
+    /// subgraph def_list_expr
     fn handle_list_expr(&mut self) -> Expr {
         self.expect_state("list_expr");
         let list_compat_type = match self.next_state().as_str() {
@@ -731,37 +730,38 @@ impl QueryGenerator {
         Expr::Tuple(list_expr)
     }
 
-
-    fn generate_SelectItem (&mut self, function_name: &str, SelectedType: Option<TypesSelectedType>, compatible: Option<TypesSelectedType>) -> SelectItem {
+    /// subgraph def_list_expr
+    fn generate_select_item(&mut self, function_name: &str, selected_type: Option<TypesSelectedType>, compatible: Option<TypesSelectedType>) -> SelectItem {
         let mut argument = function_name.to_owned();
-        let expr = self.handle_types(SelectedType, compatible).1;
+        let expr = self.handle_types(selected_type, compatible).1;
         argument.push_str("(");
         argument.push_str(&expr.to_string());
         argument.push_str(")");
         SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
     }
+
     /// subgraph def_aggregate
     /// TODO: add alias, add boolean functions
     fn handle_aggregate(&mut self) -> SelectItem {
         self.expect_state("aggregate");
-        match self.next_state().as_str() {
+        let result = match self.next_state().as_str() {
             "AVG" => {
                 self.expect_state("call52_types");
-                self.generate_SelectItem("AVG", Some(TypesSelectedType::Numeric), None)
+                self.generate_select_item("AVG", Some(TypesSelectedType::Numeric), None)
             },
             "BIT_AND" => {
                 self.expect_state("call53_types");
-                self.generate_SelectItem("BIT_AND", Some(TypesSelectedType::Numeric), None)
+                self.generate_select_item("BIT_AND", Some(TypesSelectedType::Numeric), None)
             },
             "BIT_OR" => {
                 self.expect_state("call54_types");
-                self.generate_SelectItem("BIT_OR", Some(TypesSelectedType::Numeric), None)
+                self.generate_select_item("BIT_OR", Some(TypesSelectedType::Numeric), None)
             },
             "BIT_XOR" => {
                 self.expect_state("call55_types");
-                self.generate_SelectItem("BIT_XOR", Some(TypesSelectedType::Numeric), None)
+                self.generate_select_item("BIT_XOR", Some(TypesSelectedType::Numeric), None)
             },
-             "COUNT" => {
+            "COUNT" => {
                 match self.next_state().as_str()  {
                     "COUNT_wildcard" => {
                         SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: ("COUNT(*)".to_string()), quote_style: (None)}))
@@ -787,10 +787,10 @@ impl QueryGenerator {
 
             },
             any => self.panic_unexpected(any),            
-        }
+        };
+        self.expect_state("EXIT_aggregate");
+        result
     }
-
-
 
     /// starting point; calls handle_query for the first time
     fn generate(&mut self) -> Query {
