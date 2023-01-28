@@ -1,13 +1,9 @@
-use sqlparser::dialect::GenericDialect;
-use sqlparser::keywords::{IGNORE, NEW, NULL};
 use sqlparser::parser::Parser;
 
 use sqlparser::ast::{
-    Expr, Ident, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
-    TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, Statement, ListAgg,
+    Expr, Query, SetExpr,
 };
-use sqlparser::dialect::{PostgreSqlDialect, Dialect, MySqlDialect};
-
+use sqlparser::dialect::PostgreSqlDialect;
 
 pub fn string_to_query(input: &str) -> Box<Query> {
     let dialect = PostgreSqlDialect {};
@@ -18,21 +14,14 @@ pub fn string_to_query(input: &str) -> Box<Query> {
     }
 }
 
-//returns "true" if query is equivalent under both logics
-pub fn equivalence_tester (sql: &str) -> bool {
-    let query = string_to_query(sql);
-    check_query(query)
-}
-
 pub fn check_query (query: Box<Query>) -> bool {
-    let _body = query.body;
-    let _select = match _body {
+    let body = query.body;
+    let select = match body {
         SetExpr::Select(select) => select,
         _ => panic!("query is not a SELECT query.")
     };
-    
-    let _where = _select.selection;
-    return check_where(_where);
+    let where_ = select.selection;
+    return check_where(where_);
 }
 
 fn check_where(_where: Option<Expr>) -> bool {
@@ -48,128 +37,72 @@ fn check_where(_where: Option<Expr>) -> bool {
     }
 }
     
-fn check_expr (expr: Expr) -> bool {
+fn check_expr(expr: Expr) -> bool {
     match expr {
         // Identifier e.g. table name or column name
-        Expr::Identifier(Ident) => {
-            return true;
-        },
-        
+        Expr::Identifier(_ident) => true,
         // Multi-part identifier, e.g. `table_alias.column` or `schema.table.col`
-        Expr::CompoundIdentifier(vec) => {
-            return true;
-        },
-        
+        Expr::CompoundIdentifier(_vec) => true,
         // CompositeAccess (postgres) eg: SELECT (information_schema._pg_expandarray(array['i','i'])).n    
-        Expr::CompositeAccess{expr, key} => {
-            return check_expr(*expr);
-        },
-        
-        ///"IS FALSE", "IS TRUE", "IS NULL", "IS NOT NULL" return boolean value and are not nullable
+        Expr::CompositeAccess{expr, key: _} => check_expr(*expr),
+        // "IS FALSE", "IS TRUE", "IS NULL", "IS NOT NULL" return boolean value and are not nullable
         // `IS FALSE` operator
-        Expr::IsFalse(expr) => {
-            return true;
-        },
-        
+        Expr::IsFalse(_expr) => true,
         // `IS TRUE` operator
-        Expr::IsTrue(expr) => {
-            return true;
-        },
-        
+        Expr::IsTrue(_expr) => true,
         // `IS NULL` operator
-        Expr::IsNull(expr) => {
-                return true;
-        },
-        
+        Expr::IsNull(_expr) => true,
         // `IS NOT NULL` operator
-        Expr::IsNotNull(expr) => {
-            return true;
-        },
-        
-        ///"IS DISTINCT FROM" return boolean value and is not nullable
+        Expr::IsNotNull(_expr) => true,
+        // "IS DISTINCT FROM" return boolean value and is not nullable
         // `IS DISTINCT FROM` operator
-        Expr::IsDistinctFrom(expr_first, expr_second) => {
-            return true;
-        },
-
-        ///"IS NOT DISTINCT FROM" return boolean value and is not nullable
+        Expr::IsDistinctFrom(_expr_first, _expr_second) => true,
+        // "IS NOT DISTINCT FROM" return boolean value and is not nullable
         // `IS NOT DISTINCT FROM` operator
-        Expr::IsNotDistinctFrom(expr, negated) => {
-            return true;
-        },
-        
+        Expr::IsNotDistinctFrom(_expr, _negated) => true,
         // `[ NOT ] IN (val1, val2, ...)`
         Expr::InList{expr, list, negated} => {
             if negated {
-                if check_expr(*expr) == false {   
-                    return false;
-                }
-                for el in list {
-                    if check_expr(el) == false {
-                        return false;
-                    }
-                }
+                if !check_expr(*expr) { return false; }
+                if !list.into_iter().all(check_expr) { return false; }
             }
+            true
         },
-
-
         // `[ NOT ] IN (SELECT ...)`
-        Expr::InSubquery {
-            expr, subquery, negated
-        } => {
-            return !negated;
-        },
-        
+        Expr::InSubquery {expr: _, subquery: _, negated} => !negated,
         // `[ NOT ] IN UNNEST(array_expression)`
         Expr::InUnnest {  
             expr, array_expr, negated,
         } => {
             if negated {
-                return (check_expr(*expr) == true) && (check_expr(*array_expr) == true);
-            }
+                check_expr(*expr) && check_expr(*array_expr)
+            } else { true }
         },
-
-        Expr::Value(val) => {
-            return true;;
-        }
-
-        ///BETWEEN is treated as comparison operation
+        // A literal value, such as string, number, date or NULL
+        Expr::Value(_val) => true,
+        // BETWEEN is treated as comparison operation
         // `<expr> [ NOT ] BETWEEN <low> AND <high>`
         Expr::Between {
             expr, negated, low, high,
         } => {
             if negated {
-                return check_expr(*low) && check_expr(*high) && check_expr(*expr);
-            }
+                check_expr(*low) && check_expr(*high) && check_expr(*expr)
+            } else { true }
         },
-
         // Binary operation e.g. `1 + 1` or `foo > bar`
         Expr::BinaryOp {
-            left, op, right,
-        } => {
-                return check_expr(*left) && check_expr(*right);           
-        },
-
+            left, op: _, right,
+        } => check_expr(*left) && check_expr(*right),
         // Any operation e.g. `1 ANY (1)` or `foo > ANY(bar)`, It will be wrapped in the right side of BinaryExpr
-        Expr::AnyOp(_box) => {
-            return check_expr(*_box);
-        },
-        
+        Expr::AnyOp(expr) => check_expr(*expr),
         // ALL operation e.g. `1 ALL (1)` or `foo > ALL(bar)`, It will be wrapped in the right side of BinaryExpr
-        Expr::AllOp(_box) => {
-            return check_expr(*_box);
-        },
-
+        Expr::AllOp(expr) => check_expr(*expr),
         // Unary operation e.g. `NOT foo`
         Expr::UnaryOp { op, expr} => {
             if op == sqlparser::ast::UnaryOperator::Not {
-                return check_expr(*expr);
-            }
-            else {
-                return true;
-            }
+                check_expr(*expr)
+            } else { true }
         },
-
         // SUBSTRING(<expr> [FROM <expr>] [FOR <expr>])
         Expr::Substring {
             expr, substring_from, substring_for
@@ -188,122 +121,61 @@ fn check_expr (expr: Expr) -> bool {
 
             return condition_1 && condition_2 && condition_3;
         },
-
         // Nested expression e.g. `(foo > bar)` or `(1)`
-        Expr::Nested(_box) => {
-            return check_expr(*_box);
-        },
-        
-        // A literal value, such as string, number, date or NULL
-        Expr::Value(Value) => {
-            if Value == sqlparser::ast::Value::Null {
-                return false;
-            }
-            else{
-                return true;
-            }
-        },
-        
-        /// An exists expression `[ NOT ] EXISTS(SELECT ...)`, used in expressions like
-        /// `WHERE [ NOT ] EXISTS (SELECT ...)`.
+        Expr::Nested(expr) => check_expr(*expr),
+        // A literal value, such as string, number, date or NULL /// TODO
+        // Expr::Value(value) => {
+        //     if value == sqlparser::ast::Value::Null {
+        //         false
+        //     } else { true }
+        // },
+        // An exists expression `[ NOT ] EXISTS(SELECT ...)`, used in expressions like
+        // `WHERE [ NOT ] EXISTS (SELECT ...)`.
         Expr::Exists {subquery, negated} => {
             if negated {
                 return check_query(subquery);
-            }
+            } else { true }
         },
-        
-        /// A parenthesized subquery `(SELECT ...)`, used in expression like
-        /// `SELECT (subquery) AS x` or `WHERE (subquery) = x`
-        Expr::Subquery(subquery) => {
-            return check_query(subquery);
-        },
-        
+        // A parenthesized subquery `(SELECT ...)`, used in expression like
+        // `SELECT (subquery) AS x` or `WHERE (subquery) = x`
+        Expr::Subquery(subquery) => check_query(subquery),
         // An array expression e.g. `ARRAY[1, 2]`
-        Expr::Array(Array) => {
-            for el in Array.elem {
-                if (!check_expr(el)) {
-                    return false;
-                }
-            }   
-        }, 
+        Expr::Array(array) => array.elem.into_iter().all(check_expr), 
+        // The `LISTAGG` function `SELECT LISTAGG(...) WITHIN GROUP (ORDER BY ...)`
+        Expr::ListAgg(list_agg) => {
+            let condition_1 = check_expr(*list_agg.expr);
 
-         // The `LISTAGG` function `SELECT LISTAGG(...) WITHIN GROUP (ORDER BY ...)`
-         Expr::ListAgg(_ListAgg) => {
-            let condition_1 = check_expr(*_ListAgg.expr);
-
-            let condition_2 = match _ListAgg.separator {
+            let condition_2 = match list_agg.separator {
                 Some(x) => check_expr(*x),
                 None => true,
             };
 
-            return condition_1 && condition_2;
-
+            condition_1 && condition_2
         },
-
         // The `GROUPING SETS` expr.
-        Expr::GroupingSets(_Vec) => {
-            for _vec in _Vec {
-                for el in _vec {
-                    if !check_expr(el) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+        Expr::GroupingSets(vec_vec) => {
+            vec_vec.into_iter().all(|vec| vec.into_iter().all(check_expr))
         },
-
         // The `CUBE` expr.
-        Expr::Cube(_Vec) => {
-            for _vec in _Vec {
-                for el in _vec {
-                    if !check_expr(el) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+        Expr::Cube(vec_vec) => {
+            vec_vec.into_iter().all(|vec| vec.into_iter().all(check_expr))
         },
-
         // The `ROLLUP` expr.
-        Expr::Rollup(_Vec) => {
-            for _vec in _Vec {
-                for el in _vec {
-                    if !check_expr(el) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+        Expr::Rollup(vec_vec) => {
+            vec_vec.into_iter().all(|vec| vec.into_iter().all(check_expr))
         },
-
         // ROW / TUPLE a single value, such as `SELECT (1, 2)`
-        Expr::Tuple(_Vec) => {
-            for el in _Vec {
-                if !check_expr(el) {
-                    return false;
-                }
-            }
-            return true;
+        Expr::Tuple(vec) => {
+            vec.into_iter().all(check_expr)
         },
-
         // An array index expression e.g. `(ARRAY[1, 2])[1]` or `(current_schemas(FALSE))[1]`
         Expr::ArrayIndex { 
             obj,
-            indexes, } => {
-                if !check_expr(*obj) {
-                    return false;
-                }
-
-                for el in indexes {
-                    if !check_expr(el) {
-                        return false;
-                    }
-                }
-                return true;
-            }, 
-
-            _ => {return true;},
+            indexes,
+        } => {
+            if !check_expr(*obj) { return false; }
+            indexes.into_iter().all(check_expr)
+        },
+        _ => todo!(),  // TODO: Are all of those shold be processed too
     }
-
-    true
 }
