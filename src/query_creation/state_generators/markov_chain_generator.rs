@@ -343,70 +343,6 @@ impl MarkovChain {
                 }
             }
         }
-
-
-        // let mut marked_positive = HashSet::<SmolStr>::new();
-        // let mut marked_negative = HashSet::<SmolStr>::new();
-        // for (_, function) in functions.iter() {
-        //     for (start_node_name, _) in node_params {
-        //         if marked_positive.contains(start_node_name) {
-        //             continue;
-        //         }
-        //         if marked_negative.contains(start_node_name) {
-        //             continue;
-        //         }
-        //         if !function.chain.contains_key(start_node_name) {
-        //             continue;
-        //         }
-
-        //         let mut start_node_was_marked_positive = false;
-        //         let mut dfs_stack = Vec::<(SmolStr, Vec<SmolStr>)>::new();
-        //         dfs_stack.push((start_node_name.clone(), vec![]));
-        //         let mut visited = HashSet::<SmolStr>::new();
-        //         while !dfs_stack.is_empty() {
-        //             let (node_name, mut path) = dfs_stack.pop().unwrap();
-        //             // ignore negative and marked nodes
-        //             if visited.contains(&node_name) || marked_positive.contains(&node_name) || marked_negative.contains(&node_name) {
-        //                 continue;
-        //             }
-        //             path.push(node_name.clone());
-        //             visited.insert(node_name.clone());
-        //             for out_node_name in function.chain.get_key_value(&node_name).unwrap().1 {
-        //                 if out_node_name.1.name == function.exit_node_name || marked_positive.contains(&out_node_name.1.name) {
-        //                     for node_name in path {
-        //                         marked_positive.insert(node_name);
-        //                     }
-        //                     marked_positive.insert(out_node_name.1.name.clone());
-        //                     start_node_was_marked_positive = true;
-        //                     break;
-        //                 }
-        //                 // ignore call nodes
-        //                 if out_node_name.1.call_params.is_none() {
-        //                     dfs_stack.push((out_node_name.1.name.clone(), path.clone()));
-        //                 }
-        //             }
-        //             if start_node_was_marked_positive {
-        //                 break;
-        //             }
-        //         }
-        //         if !start_node_was_marked_positive {
-        //             marked_negative.insert(start_node_name.clone());
-        //         }
-        //     }
-        // }
-        // for (_, function) in functions {
-        //     for (_, out_nodes) in function.chain.iter_mut() {
-        //         for out_node in out_nodes {
-        //             if marked_positive.contains(&out_node.1.name) {
-        //                 out_node.1.min_calls_until_function_exit = 1;
-        //             } else if marked_negative.contains(&out_node.1.name) {
-        //                 out_node.1.min_calls_until_function_exit = 0;
-        //             } else {
-        //                 panic!("Node {} was not marked", out_node.1.name);
-        //             }
-        //         }
-        //     }
-        // }
     }
 }
 
@@ -505,6 +441,7 @@ impl MarkovChainGenerator {
         Ok(self_)
     }
 
+    /// used to print the call stack of the markov chain functions
     pub fn print_stack(&self) {
         println!("Call stack:");
         for stack_item in &self.call_stack {
@@ -523,22 +460,27 @@ impl MarkovChainGenerator {
         self.compatible_type_name_stack = vec![vec![SmolStr::new("")]];
     }
 
+    /// get crrent function inputs list
     pub fn get_inputs(&self) -> FunctionInputsType {
         self.call_stack.last().unwrap().current_function.inputs.clone()
     }
 
+    /// get crrent function modifiers list
     pub fn get_modifiers(&self) -> Option<Vec<SmolStr>> {
         self.call_stack.last().unwrap().current_function.modifiers.clone()
     }
 
+    /// push the known type list for the next node that will use the type=[known]
     pub fn push_known(&mut self, type_list: Vec<SmolStr>) {
         self.known_type_name_stack.push(type_list);
     }
 
+    /// push the compatible type list for the next node that will use the type=[compatible]
     pub fn push_compatible(&mut self, type_list: Vec<SmolStr>) {
         self.compatible_type_name_stack.push(type_list);
     }
 
+    /// pop the known type for the current node which will uses type=[known]
     fn pop_known(&mut self) -> Vec<SmolStr> {
         match self.known_type_name_stack.pop() {
             Some(item) => item,
@@ -549,6 +491,7 @@ impl MarkovChainGenerator {
         }
     }
 
+    /// pop the compatible type for the current node which will uses type=[compatible]
     fn pop_compatible(&mut self) -> Vec<SmolStr> {
         match self.compatible_type_name_stack.pop() {
             Some(item) => item,

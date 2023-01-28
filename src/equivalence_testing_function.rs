@@ -24,19 +24,12 @@ pub fn check_query (query: Box<Query>) -> bool {
     return check_where(where_);
 }
 
-fn check_where(_where: Option<Expr>) -> bool {
-    if _where == None {
-        return true;
-    }
-    else {
-        let where_content = match _where {
-            Some(x) => x,
-            _ => panic!("Wrong WHERE statement!"),
-        };
-        check_expr(where_content)
-    }
+fn check_where(where_opt: Option<Expr>) -> bool {
+    if let Some(where_) = where_opt {
+        check_expr(where_)
+    } else { true }
 }
-    
+
 fn check_expr(expr: Expr) -> bool {
     match expr {
         // Identifier e.g. table name or column name
