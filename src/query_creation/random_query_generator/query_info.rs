@@ -74,7 +74,7 @@ impl RelationManager {
 
 #[derive(Debug, Clone)]
 pub enum TypesSelectedType {
-    Numeric, Val3, Array, ListExpr, String, Any
+    Numeric, Val3, Array, ListExpr, String, Bool, Any
 }
 
 impl PartialEq for TypesSelectedType {
@@ -93,6 +93,7 @@ impl TypesSelectedType {
             TypesSelectedType::Array => SmolStr::new("array"),
             TypesSelectedType::ListExpr => SmolStr::new("list expr"),
             TypesSelectedType::String => SmolStr::new("string"),
+            TypesSelectedType::Bool => SmolStr::new("bool"),
             TypesSelectedType::Any => SmolStr::new("any"),
         }
     }
@@ -105,6 +106,7 @@ impl TypesSelectedType {
                 (TypesSelectedType::Array).to_smolstr(),
                 (TypesSelectedType::Val3).to_smolstr(),
                 (TypesSelectedType::Numeric).to_smolstr(),
+                (TypesSelectedType::Bool).to_smolstr(),
             ],
             _ => vec![self.to_smolstr()],
         }

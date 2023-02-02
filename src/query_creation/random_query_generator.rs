@@ -4,7 +4,7 @@ mod query_info;
 use smol_str::SmolStr;
 use sqlparser::ast::{
     Expr, Ident, Query, Select, SetExpr, TableAlias, TableFactor,
-    TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, SelectItem, ObjectName,
+    TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, SelectItem, ObjectName, FunctionArg, FunctionArgExpr,
 };
 
 use self::query_info::{TypesSelectedType, RelationManager};
@@ -608,6 +608,7 @@ impl QueryGenerator {
                     "types_select_type_list_expr" => TypesSelectedType::ListExpr,
                     "types_select_type_numeric" => TypesSelectedType::Numeric,
                     "types_select_type_string" => TypesSelectedType::String,
+                    "types_select_type_bool" => TypesSelectedType::Bool,
                     any => self.panic_unexpected(any)
                 };
                 self.state_generator.push_known(types_selected_type.get_types());
@@ -620,6 +621,7 @@ impl QueryGenerator {
             },
             "types_null" => (TypesSelectedType::Any, Expr::Value(Value::Null)),
             "call0_numeric" => (TypesSelectedType::Numeric, self.handle_numeric()),
+            "call0_bool" => (TypesSelectedType::Bool, self.handle_bool()),
             "call1_VAL_3" => (TypesSelectedType::Val3, self.handle_val_3()),
             "call0_string" => (TypesSelectedType::String, self.handle_string()),
             "call0_list_expr" => {
@@ -682,6 +684,7 @@ impl QueryGenerator {
             "call31_types" => TypesSelectedType::String,
             "call51_types" => TypesSelectedType::ListExpr,
             "call14_types" => TypesSelectedType::Array,
+            "call60_types" => TypesSelectedType::Bool,
             any => self.panic_unexpected(any)
         };
         let types_value = self.handle_types(Some(array_compat_type.clone()), None).1;
@@ -712,6 +715,7 @@ impl QueryGenerator {
             "call18_types" => TypesSelectedType::String,
             "call19_types" => TypesSelectedType::ListExpr,
             "call20_types" => TypesSelectedType::Array,
+            "call59_types" => TypesSelectedType::Bool,
             any => self.panic_unexpected(any)
         };
         let types_value = self.handle_types(Some(list_compat_type.clone()), None).1;
@@ -730,62 +734,135 @@ impl QueryGenerator {
         Expr::Tuple(list_expr)
     }
 
-    /// subgraph def_list_expr
-    fn generate_select_item(&mut self, function_name: &str, selected_type: Option<TypesSelectedType>, compatible: Option<TypesSelectedType>) -> SelectItem {
-        let mut argument = function_name.to_owned();
-        let expr = self.handle_types(selected_type, compatible).1;
-        argument.push_str("(");
-        argument.push_str(&expr.to_string());
-        argument.push_str(")");
-        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
+    /// subgraph def_bool
+    fn handle_bool(&mut self) -> Expr {
+        self.expect_state("bool");
+        let bool = match self.next_state().as_str() {
+            "bool_true" => {
+                Expr::Value(Value::Boolean(true))
+            },
+            "bool_false" => {
+                Expr::Value(Value::Boolean(false))
+            },
+            "BinaryBoolOp" => {
+                self.expect_state("call54_types");
+                let operand_1 = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                let binary_bool_op = match self.next_state().as_str() {
+                    "BoolAnd" => BinaryOperator::And,
+                    "BoolOr" => BinaryOperator::Or,
+                    "BoolXor" => BinaryOperator::Xor,
+                    any => self.panic_unexpected(any)
+                    
+                };
+                self.expect_state("call55_types");
+                let operand_2 = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                Expr::BinaryOp { left: Box::new(operand_1), op: (binary_bool_op), right: Box::new(operand_2) }
+            },
+            "BoolNot" => {
+                self.expect_state("call53_types");
+                //TODO: is Bool compatible_with 3vl ?!
+                Expr::UnaryOp { op: UnaryOperator::Not, expr: Box::new( self.handle_types(
+                    Some(TypesSelectedType::Bool), None
+                ).1) }
+
+            },
+            any => self.panic_unexpected(any)
+        };
+        self.expect_state("EXIT_bool");
+        bool
     }
 
     /// subgraph def_aggregate
-    /// TODO: add alias, add boolean functions
+    /// TODO: add alias, add boolean functions, check for which functions DISTINCT is possible
     fn handle_aggregate(&mut self) -> SelectItem {
         self.expect_state("aggregate");
         let result = match self.next_state().as_str() {
-            "AVG" => {
+             arm @ ("AVG" | "BIT_AND" | "BIT_OR" | "BIT_XOR" | "SUM") => {
                 self.expect_state("call52_types");
-                self.generate_select_item("AVG", Some(TypesSelectedType::Numeric), None)
+                SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                    name: ObjectName(vec![Ident{value: arm.clone().to_string(), quote_style: (None)}]),
+                    args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
+                    over: None,
+                    distinct: false,
+                }))
             },
-            "BIT_AND" => {
-                self.expect_state("call53_types");
-                self.generate_select_item("BIT_AND", Some(TypesSelectedType::Numeric), None)
-            },
-            "BIT_OR" => {
-                self.expect_state("call54_types");
-                self.generate_select_item("BIT_OR", Some(TypesSelectedType::Numeric), None)
-            },
-            "BIT_XOR" => {
-                self.expect_state("call55_types");
-                self.generate_select_item("BIT_XOR", Some(TypesSelectedType::Numeric), None)
-            },
-            "COUNT" => {
+            arm @ "COUNT" => {
                 match self.next_state().as_str()  {
                     "COUNT_wildcard" => {
-                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: ("COUNT(*)".to_string()), quote_style: (None)}))
+                        SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                            name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Wildcard)],
+                            over: None,
+                            distinct: false,
+                        }))
                     },
-                    "COUNT_distinct" => {
-                        self.expect_state("call8_types_all");
-                        let mut argument = "COUNT(DISTINCT ".to_owned();
-                        let expr = self.handle_types_all().1;
-                        argument.push_str(&expr.to_string());
-                        argument.push_str(")");
-                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
-                    },
-                    "call8_types_all" => {
-                        let mut argument = "COUNT(".to_owned();
-                        let expr = self.handle_types_all().1;
-                        argument.push_str(&expr.to_string());
-                        argument.push_str(")");
-                        SelectItem::UnnamedExpr(Expr::Identifier( Ident { value: (argument), quote_style: (None)}))
+                    arm @ ("COUNT_distinct" | "call8_types_all") => {
+                        let count_distinct = match arm {
+                            "COUNT_distinct" => {
+                                self.expect_state("call8_types_all");
+                                true
+                            },
+                            "call8_types_all" => false,
+                            any => self.panic_unexpected(any),
+                        };
+                        SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                            name: ObjectName(vec![Ident{value: "COUNT".to_string(), quote_style: (None)}]),
+                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types_all().1))],
+                            over: None,
+                            distinct: count_distinct,
+                        }))
                     },
                     any => self.panic_unexpected(any),            
-                    
                 }
-
             },
+            arm @ "ARRAY_AGG" => {
+                self.expect_state("call61_types");
+                SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                    name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                    args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Array), None).1))],
+                    over: None,
+                    distinct: false,
+                }))
+            },
+            arm @ ("BOOL_AND" | "BOOL_OR" | "EVERY") => {
+                self.expect_state("call56_types");
+                SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                    name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                    args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
+                    over: None,
+                    distinct: false,
+                }))
+            },
+            arm @ ("MAX" | "MIN") => {
+                self.expect_state("max_min_function_types");
+                match self.next_state().as_str() {
+                    "call57_types" | "call62_types" | "call63_types" => {
+                        SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                            name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                            args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(
+                                match arm {
+                                    "call57_types" => TypesSelectedType::Array,
+                                    "call62_types" => TypesSelectedType::Numeric,
+                                    "call63_types" => TypesSelectedType::String,
+                                    any => self.panic_unexpected(any),   
+                                } ), None).1))],
+                            over: None,
+                            distinct: false,
+                        }))
+                    },
+                    any => self.panic_unexpected(any),   
+                }
+            },
+
+        arm @ "STRING_AGG" => {
+            self.expect_state("call58_types");
+                SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
+                    name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                    args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::String), None).1))],
+                    over: None,
+                    distinct: false,
+                }))
+        }
             any => self.panic_unexpected(any),            
         };
         self.expect_state("EXIT_aggregate");

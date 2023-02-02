@@ -8,6 +8,7 @@ use equivalence_testing::query_creation::{
     random_query_generator::QueryGenerator,
     state_generators::MarkovChainGenerator,
 };
+use sqlparser::keywords::ELSE;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -38,11 +39,11 @@ fn main() {
     for _ in 0..program_args.num_generate {
         let query_ast = Box::new(generator.next().unwrap());
         let query_string = query_ast.to_string();
-        // println!("Generated query: {:#?}", query_ast.to_string());
+        println!("Generated query: {:#?}", query_ast.to_string());
         let desired_ast = string_to_query(&query_string);
         if desired_ast != query_ast {
             println!("AST mismatch! For query: {query_string}\nAST #1 (generated): {:#?}\nAST #2 (parsed): {:#?}", query_ast, desired_ast)
-        }
+        } 
         let equivalent = check_query(query_ast);
         // println!("Equivalent? {:#?}\n", equivalent);
         num_generated += 1;
