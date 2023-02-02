@@ -8,7 +8,6 @@ use equivalence_testing::query_creation::{
     random_query_generator::QueryGenerator,
     state_generators::MarkovChainGenerator,
 };
-use sqlparser::keywords::ELSE;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]

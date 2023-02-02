@@ -833,14 +833,14 @@ impl QueryGenerator {
                     distinct: false,
                 }))
             },
-            arm @ ("MAX" | "MIN") => {
+            arm @ ("MIN" | "MAX") => {
                 self.expect_state("max_min_function_types");
                 match self.next_state().as_str() {
-                    "call57_types" | "call62_types" | "call63_types" => {
+                    caller @ ("call57_types" | "call62_types" | "call63_types") => {
                         SelectItem::UnnamedExpr(Expr::Function(sqlparser::ast::Function {
                             name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
                             args: vec![FunctionArg::Unnamed(FunctionArgExpr::Expr(self.handle_types(Some(
-                                match arm {
+                                match caller {
                                     "call57_types" => TypesSelectedType::Array,
                                     "call62_types" => TypesSelectedType::Numeric,
                                     "call63_types" => TypesSelectedType::String,
