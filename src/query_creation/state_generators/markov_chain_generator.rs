@@ -534,7 +534,7 @@ impl DynamicModel for DefaultModel {
         node_outgoing
     }
 }
-
+  
 impl MarkovChainGenerator {
     pub fn next(&mut self, dyn_model: &mut impl DynamicModel) -> Option<<Self as Iterator>::Item> {
         if let Some(call_params) = self.pending_call.take() {
