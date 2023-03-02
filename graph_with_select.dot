@@ -122,8 +122,10 @@ digraph G {
         // SELECT_WITH_TIES -> SELECT_projection
         SELECT_distinct_end -> SELECT_projection
         // SELECT_percent_end -> SELECT_projection
-
-        call0_aggregate [label="aggregate", shape="rectagle", style=filled, color=purple]
+        //COUNT_wildcard[label="COUNT(*)"]
+        //COUNT_distinct[label="DISTINCT"]
+        
+        call0_aggregate [label="aggregate", TYPES = "[any]", shape="rectagle", style=filled, color=purple]
         SELECT_projection -> call0_aggregate
         call0_aggregate -> EXIT_SELECT
 
@@ -718,44 +720,34 @@ digraph G {
 
         call45_types -> EXIT_having
         call46_types -> EXIT_having
-    }
+    }       
 
     subgraph def_aggregate {
-        aggregate [TYPES="[numeric, 3VL Value, array, list expr, string, bool]", label="AGGREGATE (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?, bool?]", shape=rectangle, style=filled, color=purple]        
+        aggregate [TYPES="[numeric, array, string, bool]", label="AGGREGATE (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?, bool?]", shape=rectangle, style=filled, color=purple]        
         EXIT_aggregate [label="EXIT aggregate"]
         
         aggregate_select_return_type [label="return type:="]
         //TODO make these types an "OPTION"
         aggregate -> aggregate_select_return_type
-        aggregate_select_type_numeric[label="numeric"]
+        aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric"]
         aggregate_select_type_array[OPTIONAL="array", label="array"]
         aggregate_select_type_string[OPTIONAL="string", label="string"]
         aggregate_select_type_bool[OPTIONAL="bool", label="bool"]
-        //aggregate_select_type_list_expr[OPTIONAL="list expr", label="list expr?"]
-        //aggregate_select_type_3vl[OPTIONAL="3VL Value", label="3VL Value?"]
-//        aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
-  //      aggregate_select_type_array[OPTIONAL="array", label="array?"]
-    //    aggregate_select_type_string[OPTIONAL="string", label="string?"]
-      //  aggregate_select_type_bool[OPTIONAL="bool", label="bool?"]
-        
 
         aggregate_select_return_type -> aggregate_select_type_numeric
         aggregate_select_return_type -> aggregate_select_type_array
         aggregate_select_return_type -> aggregate_select_type_string
         aggregate_select_return_type -> aggregate_select_type_bool
-        //aggregate_select_type -> aggregate_select_type_3vl
-        //aggregate_select_type -> aggregate_select_type_list_expr
         
-        call61_types [TYPES="[array]", label="TYPES: array", shape=rectangle, style=filled, color=lightblue]
         call56_types [TYPES="[bool]", label="TYPES: bool", shape=rectangle, style=filled, color=lightblue]
-        call57_types [TYPES="[array]", label="TYPES: array", shape=rectangle, style=filled, color=lightblue]
+        //call57_types [TYPES="[array]", label="TYPES: array", shape=rectangle, style=filled, color=lightblue]
         call52_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
-        call58_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
-        call62_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        //call58_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        //call62_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
         call63_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
         call56_types -> EXIT_aggregate
         call52_types -> EXIT_aggregate
-        call57_types -> EXIT_aggregate
+        //call57_types -> EXIT_aggregate  
         call63_types -> EXIT_aggregate
 
         ARRAY_AGG[]
@@ -766,7 +758,7 @@ digraph G {
         
         AVG[]
         aggregate_select_type_numeric -> AVG
-        AVG -> call56_types
+        AVG -> call52_types
         
         BIT_AND[]
         aggregate_select_type_numeric -> BIT_AND
@@ -796,27 +788,46 @@ digraph G {
         aggregate_select_type_bool -> EVERY
         EVERY -> call56_types
 
-        max_min_numeric [label = "return numeric"]
-        MAX[]
-        MAX -> max_min_numeric
-        aggregate_select_type_numeric -> MAX
-        max_min_numeric -> call52_types
-        max_min_numeric -> call57_types
-        aggregate_select_type_string -> MAX
-        MAX -> call63_types
+        MAX_string[label = "MAX"]
+        //aggregate_select_type_numeric -> MAX
+        //max_min_numeric -> call52_types
+        //max_min_numeric -> call57_types
+        call2_array [TYPES="[string]", label = "ARRAY [string]", shape=rectangle, style=filled, color=yellow]
+        call2_array -> EXIT_aggregate
+        MAX_string -> call2_array
+        aggregate_select_type_string -> MAX_string
+        MAX_string -> call63_types
 
-        MIN[]
-        MIN -> max_min_numeric
-        aggregate_select_type_numeric -> MIN
-        aggregate_select_type_string -> MIN
-        MIN -> call63_types
-        
+        MIN_string[label="MIN"]
+        //aggregate_select_type_numeric -> MIN
+        MIN_string -> call2_array
+        aggregate_select_type_string -> MIN_string
+        MIN_string -> call63_types
+
+
+        MAX_numeric[label = "MAX"]
+        //aggregate_select_type_numeric -> MAX
+        //max_min_numeric -> call52_types
+        //max_min_numeric -> call57_types
+        aggregate_select_type_numeric -> MAX_numeric
+        MAX_numeric -> call52_types
+        call3_array [TYPES="[numeric]", label = "ARRAY [numeric]", shape=rectangle, style=filled, color=yellow]
+        MAX_numeric -> call3_array
+        call3_array -> EXIT_aggregate
+
+        MIN_numeric[label="MIN"]
+        //aggregate_select_type_numeric -> MIN
+        aggregate_select_type_numeric -> MIN_numeric
+        MIN_numeric -> call52_types
+        MIN_numeric -> call3_array
+    
+
         STRING_AGG[]
         aggregate_select_type_string -> STRING_AGG
         STRING_AGG -> call63_types
         
         COUNT[]
-        aggregate -> COUNT
+        aggregate_select_type_numeric -> COUNT
         COUNT_wildcard[label="*"]
         COUNT_distinct[label="DISTINCT"]
         call8_types_all [TYPES="[any]", label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
