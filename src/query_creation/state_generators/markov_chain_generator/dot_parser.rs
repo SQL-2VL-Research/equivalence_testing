@@ -128,8 +128,9 @@ pub enum CodeUnit {
     Function(Function),
     NodeDef {
         name: SmolStr,
-        option_name: Option<SmolStr>,
         literal: bool,
+        option_name: Option<SmolStr>,
+        trigger: Option<(SmolStr, bool)>,
     },
     Call {
         node_name: SmolStr,
@@ -137,6 +138,7 @@ pub enum CodeUnit {
         inputs: FunctionInputsType,
         modifiers: Option<Vec<SmolStr>>,
         option_name: Option<SmolStr>,
+        trigger: Option<(SmolStr, bool)>,
     },
     Edge {
         node_name_from: SmolStr,
@@ -239,6 +241,23 @@ impl<'a> Iterator for DotTokenizer<'a> {
                                         Some(DotToken::QuotedIdentifiers(idents)) => Some(idents),
                                         _ => None
                                     };
+                                    let trigger = match node_spec.remove("TRIGGER") {
+                                        Some(DotToken::QuotedIdentifiers(idents)) => {
+                                            let trigger_on = match node_spec.remove("TRIGGER_MODE") {
+                                                Some(DotToken::QuotedIdentifiers(mode_name)) => match mode_name.as_str() {
+                                                    mode_name @ ("on" | "off") => Some(mode_name == "on"), _ => None
+                                                }, _ => None,
+                                            };
+                                            let trigger_on = match trigger_on {
+                                                Some(v) => v,
+                                                None => break Some(Err(SyntaxError::new(format!(
+                                                    "Expected trigger_mode=\"on\" or trigger_mode=\"off\" after trigger=\"{idents}\" for node {node_name}"
+                                                )))),
+                                            };
+                                            Some((idents, trigger_on))
+                                        },
+                                        _ => None
+                                    };
                                     let literal = match node_spec.remove("LITERAL") {
                                         Some(DotToken::QuotedIdentifiers(idents)) => idents == SmolStr::new("t"),
                                         _ => false
@@ -261,12 +280,14 @@ impl<'a> Iterator for DotTokenizer<'a> {
                                             inputs: input_type,
                                             modifiers,
                                             option_name,
+                                            trigger,
                                         }));
                                     } else {
                                         break Some(Ok(CodeUnit::NodeDef {
                                             name: node_name,
                                             option_name,
-                                            literal: false,
+                                            literal,
+                                            trigger
                                         }));
                                     }
                                 },
@@ -423,7 +444,7 @@ fn parse_function_options(
             )));
         }
     }
-    if let Some(token) = node_spec.remove("MOD") {
+    if let Some(token) = node_spec.remove("MODS") {
         if let DotToken::QuotedIdentifiersWithBrackets(value) = token {
             let mods = FunctionInputsType::get_identifier_names(value)
                 .iter()
@@ -436,7 +457,7 @@ fn parse_function_options(
             }
         } else {
             return Err(SyntaxError::new(format!(
-                "{node_name}[MOD=... should take bracketed form: MOD=\"[.., ]\""
+                "{node_name}[MODS=... should take bracketed form: MODS=\"[.., ]\""
             )));
         }
     }

@@ -7,7 +7,14 @@ use sqlparser::dialect::PostgreSqlDialect;
 
 pub fn string_to_query(input: &str) -> Box<Query> {
     let dialect = PostgreSqlDialect {};
-    let ast = Parser::parse_sql(&dialect, input).unwrap();
+    let ast = match Parser::parse_sql(&dialect, input) {
+        Ok(ast) => ast,
+        Err(err) => {
+            println!("Query: {}", input);
+            println!("Parsing error! {}", err);
+            panic!();
+        },
+    };
     match ast.into_iter().next().expect("No single query in sql file") {
         sqlparser::ast::Statement::Query(query) => query,
         _ => panic!("Query present in file is not a SELECT query.")
@@ -16,7 +23,7 @@ pub fn string_to_query(input: &str) -> Box<Query> {
 
 pub fn check_query (query: Box<Query>) -> bool {
     let body = query.body;
-    let select = match body {
+    let select = match *body {
         SetExpr::Select(select) => select,
         _ => panic!("query is not a SELECT query.")
     };
@@ -41,8 +48,13 @@ fn check_expr(expr: Expr) -> bool {
         // "IS FALSE", "IS TRUE", "IS NULL", "IS NOT NULL" return boolean value and are not nullable
         // `IS FALSE` operator
         Expr::IsFalse(_expr) => true,
+        Expr::IsNotFalse(_) => true,
+        // `IS UNKNOWN` operator
+        Expr::IsUnknown(_) => true,
+        Expr::IsNotUnknown(_) => true,
         // `IS TRUE` operator
         Expr::IsTrue(_expr) => true,
+        Expr::IsNotTrue(_) => true,
         // `IS NULL` operator
         Expr::IsNull(_expr) => true,
         // `IS NOT NULL` operator
@@ -56,13 +68,11 @@ fn check_expr(expr: Expr) -> bool {
         // `[ NOT ] IN (val1, val2, ...)`
         Expr::InList{expr, list, negated} => {
             if negated {
-                if !check_expr(*expr) { return false; }
-                if !list.into_iter().all(check_expr) { return false; }
-            }
-            true
+                check_expr(*expr) && list.into_iter().all(check_expr)
+            } else { true }
         },
         // `[ NOT ] IN (SELECT ...)`
-        Expr::InSubquery {expr: _, subquery: _, negated} => !negated,
+        Expr::InSubquery {expr: _, subquery: _, negated} => !negated,  // !!!!! FALSE IS HERE
         // `[ NOT ] IN UNNEST(array_expression)`
         Expr::InUnnest {  
             expr, array_expr, negated,
@@ -166,9 +176,11 @@ fn check_expr(expr: Expr) -> bool {
             obj,
             indexes,
         } => {
-            if !check_expr(*obj) { return false; }
-            indexes.into_iter().all(check_expr)
+            check_expr(*obj) && indexes.into_iter().all(check_expr)
         },
-        _ => todo!(),  // TODO: Are all of those shold be processed too
+        Expr::JsonAccess { left, operator: _, right } => {
+            check_expr(*left) && check_expr(*right)
+        },
+        _ => true,
     }
 }

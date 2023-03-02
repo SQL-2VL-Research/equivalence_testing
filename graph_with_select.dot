@@ -8,7 +8,7 @@
 #     {node_name} [
 #         TYPES="[{type_name}, ...]" OR "[any]" OR "[known]" OR "[compatible]",
 #         TYPE="{type_name}, ..." OR "known",
-#         MOD="[{mod_name}, ...]",
+#         MODS="[{mod_name}, ...]" OR "[...]" (passes all argument triggers further),
 #         ...
 #     ]
 #     ...
@@ -28,7 +28,7 @@
 # EXIT_{node_name} [label="EXIT {node_label}"]
 
 # 6. Call a callable node with params:
-# call{caller_num}_{node_name} [TYPES={...}, MOD={...}, ...]
+# call{caller_num}_{node_name} [TYPES={...}, MODS={...}, ...]
 # ... -> call...
 # there can be multiple callers, so each caller should have a unique id
 # values of TYPES and MOD are exact mathes to those in definition
@@ -55,13 +55,28 @@
 # 13 [temporary]. Mark nodes that will generate a literal value with 100%
 # probability as node[literal="t"]
 
+# 14. To use modifiers provided in arguments, mark a node with trigger="MOD. NAME", trigger_mode="off" / trigger_mode="on"
+
 digraph G {
     subgraph def_Query {
-        Query [TYPES="[any]", MOD="[single value]", label="Query\ntypes(ordered)=[...]\nmodif.=[SINGLE VALUE]", shape=octagon, style=filled, color=green]
+        Query [TYPES="[any]", MODS="[single value]", label="Query\ntypes(ordered)=[...]\nmods=[single value]", shape=octagon, style=filled, color=green]
         EXIT_Query [label="EXIT Query"]
 
         FROM []
-        Query -> FROM
+
+        single_value_true [label="limit 1 (mod.: 'single value')", trigger="single value", trigger_mode="on"]
+        Query -> single_value_true
+        single_value_true -> FROM
+
+        single_value_false [label="mod.: '!single value'", trigger="single value", trigger_mode="off"]
+        Query -> single_value_false
+        single_value_false -> FROM
+
+        limit [label="limit [num]"]
+        single_value_false -> limit
+        call52_types [TYPES="[numeric]", MODS="[no column spec]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        limit -> call52_types
+        call52_types -> FROM
 
         FROM_multiple_relations [label="multiple relations"]
 
@@ -70,7 +85,7 @@ digraph G {
         Table -> FROM_multiple_relations
         FROM_multiple_relations -> Table
 
-        call0_Query [label="Query", shape=rectangle, TYPES="[any]", MOD="[]", style=filled, color=green]
+        call0_Query [label="Query", shape=rectangle, TYPES="[any]", MODS="[]", style=filled, color=green]
         FROM -> call0_Query
         call0_Query -> FROM_multiple_relations
         FROM_multiple_relations -> call0_Query
@@ -81,12 +96,12 @@ digraph G {
         WHERE [label="WHERE"]
         EXIT_FROM -> WHERE
 
-        call0_VAL_3 [label="3VL Value", shape=rectangle, style=filled, color=red]
-        WHERE -> call0_VAL_3
+        call53_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        WHERE -> call53_types
 
         SELECT []
         EXIT_WHERE [label="EXIT WHERE"]
-        call0_VAL_3 -> EXIT_WHERE
+        call53_types -> EXIT_WHERE
         EXIT_FROM -> EXIT_WHERE
 
         SELECT []
@@ -141,7 +156,7 @@ digraph G {
         SELECT_list -> SELECT_qualified_wildcard
         SELECT_list -> SELECT_unnamed_expr
         SELECT_list -> SELECT_expr_with_alias
-        call7_types_all[label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call7_types_all [label="TYPES: ALL\nmodif: [no column spec]", MODS="[no column spec]", shape=rectangle, style=filled, color=orange]
         SELECT_unnamed_expr -> call7_types_all
         SELECT_expr_with_alias -> call7_types_all
 
@@ -153,7 +168,7 @@ digraph G {
         SELECT_list_multiple_values -> EXIT_SELECT
         SELECT_list_multiple_values -> SELECT_list
 
-        // call0_having [label="HAVING", TYPES="[known]", MOD="[]", shape=rectangle, style=filled, color=mediumvioletred]
+        // call0_having [label="HAVING", TYPES="[known]", MODS="[]", shape=rectangle, style=filled, color=mediumvioletred]
         // EXIT_SELECT -> call0_having
         // call0_having -> EXIT_Query
         
@@ -161,11 +176,11 @@ digraph G {
     }
 
     subgraph def_VAL_3 {
-        VAL_3 [shape=rectangle, label="3VL Value", style=filled, color=red]
+        VAL_3 [shape=rectangle, label="3VL Value\nmods: [no column spec]", MODS="[no column spec]", style=filled, color=red]
         EXIT_VAL_3 [shape=rectangle, label="EXIT 3VL Value"]
 
         IsNull [label="IS NULL"]
-        call0_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call0_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         VAL_3 -> IsNull
         IsNull -> call0_types_all
         IsNull_not [label="NOT"]
@@ -174,10 +189,10 @@ digraph G {
         call0_types_all -> EXIT_VAL_3
 
         IsDistinctFrom [label="IS DISTINCT FROM"]
-        call1_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call1_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         IsDistinctNOT [label="NOT"]
         DISTINCT []
-        call21_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call21_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         VAL_3 -> IsDistinctFrom
         IsDistinctFrom -> call1_types_all
         call1_types_all -> IsDistinctNOT
@@ -188,7 +203,7 @@ digraph G {
 
         Exists_not [label="NOT"]
         Exists [label="EXISTS"]
-        call2_Query [TYPES="[any]", MOD="[]", label="Query", shape=rectangle, style=filled, color=green]
+        call2_Query [TYPES="[any]", MODS="[]", label="Query", shape=rectangle, style=filled, color=green]
         VAL_3 -> Exists
         Exists -> call2_Query
         call2_Query -> EXIT_VAL_3
@@ -199,25 +214,25 @@ digraph G {
         InListNot [label="NOT"]
         InListIn [label="IN"]
         VAL_3 -> InList
-        call2_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call2_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         InList -> call2_types_all
         call2_types_all -> InListNot
         InListNot -> InListIn
         call2_types_all -> InListIn
-        call1_list_expr [TYPES="[compatible]", label="list expr\nTYPES: [compatible]", shape=rectangle, style=filled, color=blue]
+        call1_list_expr [TYPES="[compatible]", MODS="[...]", label="list expr\nTYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=blue]
         InListIn -> call1_list_expr
         call1_list_expr -> EXIT_VAL_3
 
         InSubquery[label="IN [subquery]"]
         InSubqueryNot [label="NOT"]
         InSubqueryIn [label="IN"]
-        call3_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call3_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         VAL_3 -> InSubquery
         InSubquery -> call3_types_all
         call3_types_all -> InSubqueryNot
         InSubqueryNot -> InSubqueryIn
         call3_types_all -> InSubqueryIn
-        call3_Query [TYPES="[compatible]", MOD="[]", label="Query\nTYPE: [compatible]", shape=rectangle, style=filled, color=green]
+        call3_Query [TYPES="[compatible]", MODS="[]", label="Query\nTYPE: [compatible]", shape=rectangle, style=filled, color=green]
         InSubqueryIn -> call3_Query
         call3_Query -> EXIT_VAL_3
 
@@ -225,13 +240,13 @@ digraph G {
         BetweenBetween [label="BETWEEN"]
         BetweenBetweenAnd [label="AND"]
         VAL_3 -> Between
-        call4_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call4_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         Between -> call4_types_all
         call4_types_all -> BetweenBetween
-        call22_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call22_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BetweenBetween -> call22_types
         call22_types -> BetweenBetweenAnd
-        call23_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call23_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BetweenBetweenAnd -> call23_types
         call23_types -> EXIT_VAL_3
 
@@ -241,9 +256,9 @@ digraph G {
         BinaryCompLessEqual [label="<="]
         BinaryCompUnEqual [label="<>"]
         VAL_3 -> BinaryComp
-        call5_types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call5_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         BinaryComp -> call5_types_all
-        call24_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call24_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         call5_types_all -> BinaryCompLess
         BinaryCompLess -> call24_types
         call5_types_all -> BinaryCompEqual
@@ -265,7 +280,7 @@ digraph G {
         AnyAllAnyAllAny[label="ANY"]
         AnyAllAnyAllAll[label="ALL"]
         VAL_3 -> AnyAll
-        call6_types_all[label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        call6_types_all [label="TYPES: ALL\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=orange]
         AnyAll -> call6_types_all
         call6_types_all -> AnyAllSelectOp
         AnyAllSelectOp -> AnyAllLess
@@ -279,7 +294,7 @@ digraph G {
         call4_Query [TYPES="[compatible]", label="Query\nTYPE: [compatible]", shape=rectangle, style=filled, color=green]
         AnyAllSelectIter -> call4_Query
         call4_Query -> AnyAllAnyAll
-        call1_array [TYPES="[compatible]", label="array\nTYPE: [compatible]", shape=rectangle, style=filled, color=yellow]
+        call1_array [TYPES="[compatible]", MODS="[...]", label="array\nTYPE: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=yellow]
         AnyAllSelectIter -> call1_array
         call1_array -> AnyAllAnyAll
         AnyAllAnyAll -> AnyAllAnyAllAny
@@ -291,12 +306,12 @@ digraph G {
         BinaryStringLikeNot [label="NOT"]
         BinaryStringLikeIn [label="LIKE"]
         VAL_3 -> BinaryStringLike
-        call25_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call25_types [MODS="[...]", TYPES="[string]", label="TYPES: string\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BinaryStringLike -> call25_types
         call25_types -> BinaryStringLikeNot
         BinaryStringLikeNot -> BinaryStringLikeIn
         call25_types -> BinaryStringLikeIn
-        call26_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call26_types [MODS="[...]", TYPES="[string]", label="TYPES: string\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BinaryStringLikeIn -> call26_types
         call26_types -> EXIT_VAL_3
 
@@ -305,10 +320,10 @@ digraph G {
         BinaryBooleanOpV3OR [label="OR"]
         BinaryBooleanOpV3XOR [label="XOR"]
         VAL_3 -> BinaryBooleanOpV3
-        call27_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        call27_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BinaryBooleanOpV3 -> call27_types
         call27_types -> BinaryBooleanOpV3AND
-        call28_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        call28_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BinaryBooleanOpV3AND -> call28_types
         call27_types -> BinaryBooleanOpV3OR
         BinaryBooleanOpV3OR -> call28_types
@@ -325,19 +340,19 @@ digraph G {
 
         Nested_VAL_3[label="([expr])"]
         VAL_3 -> Nested_VAL_3
-        call29_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        call29_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         Nested_VAL_3 -> call29_types
         call29_types -> EXIT_VAL_3
 
         UnaryNot_VAL_3[label="NOT"]
-        call30_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        call30_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
         VAL_3 -> UnaryNot_VAL_3
         UnaryNot_VAL_3 -> call30_types
         call30_types -> EXIT_VAL_3
     }
 
     subgraph def_numeric {
-        numeric [shape=rectangle, label="numeric", style=filled, color=chocolate]
+        numeric [shape=rectangle, label="numeric\nmods: [no column spec]", MODS="[no column spec]", style=filled, color=chocolate]
         EXIT_numeric [label="EXIT numeric"]
 
         numeric_literal[label="literal", literal="t"]
@@ -350,9 +365,9 @@ digraph G {
         numeric_literal_float -> EXIT_numeric
 
         BinaryNumericOp[label="binary op."]
-        call47_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call47_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         numeric -> BinaryNumericOp
-        call48_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call48_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         BinaryNumericOp -> call48_types
         binary_numeric_plus [label="+"]
         call48_types -> binary_numeric_plus
@@ -378,7 +393,7 @@ digraph G {
         call47_types -> EXIT_numeric
 
         UnaryNumericOp [label="unary op."]
-        call1_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call1_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         numeric -> UnaryNumericOp
         unary_numeric_plus[label="+"]
         UnaryNumericOp -> unary_numeric_plus
@@ -395,12 +410,12 @@ digraph G {
         unary_numeric_cub_root [label="||/"]
         UnaryNumericOp -> unary_numeric_cub_root
         unary_numeric_cub_root -> call1_types
-        unary_numeric_postfix_fact [label="!"]
-        UnaryNumericOp -> unary_numeric_postfix_fact
-        unary_numeric_postfix_fact -> call1_types
-        unary_numeric_prefix_fact [label="!!"]
-        UnaryNumericOp -> unary_numeric_prefix_fact
-        unary_numeric_prefix_fact -> call1_types
+        // unary_numeric_postfix_fact [label="!"]         // THESE 2 WERE REMOVED FROM POSTGRESQL
+        // UnaryNumericOp -> unary_numeric_postfix_fact
+        // unary_numeric_postfix_fact -> call1_types
+        // unary_numeric_prefix_fact [label="!!"]
+        // UnaryNumericOp -> unary_numeric_prefix_fact
+        // unary_numeric_prefix_fact -> call1_types
         unary_numeric_abs [label="@"]
         UnaryNumericOp -> unary_numeric_abs
         unary_numeric_abs -> call1_types
@@ -408,23 +423,23 @@ digraph G {
 
         numeric_string_Position[label="POSITION([expr] in [expr])"]
         numeric -> numeric_string_Position
-        call2_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call2_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         numeric_string_Position -> call2_types
         string_position_in [label="in"]
         call2_types -> string_position_in
-        call3_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call3_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         string_position_in -> call3_types
         call3_types -> EXIT_numeric
 
         Nested_numeric[label="([expr])"]
         numeric -> Nested_numeric
-        call4_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call4_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         Nested_numeric -> call4_types
         call4_types -> EXIT_numeric
     }
 
     subgraph def_string {
-        string [label="string", shape=rectangle, style=filled, color=pink]
+        string [label="string\nmods: [no column spec]", MODS="[no column spec]", shape=rectangle, style=filled, color=pink]
         EXIT_string [label="EXIT string"]
 
         string_literal [label="random string literal", literal="t"]
@@ -433,9 +448,9 @@ digraph G {
 
         string_trim[label="TRIM"]
         string -> string_trim
-        call5_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call5_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         string_trim -> call5_types
-        call6_types[TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call6_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         string_trim -> call6_types
         BOTH []
         call6_types -> BOTH
@@ -450,26 +465,26 @@ digraph G {
 
         string_concat [label="concatenation"]
         string -> string_concat
-        call7_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call7_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         string_concat -> call7_types
         string_concat_concat [label="||"]
         call7_types -> string_concat_concat
-        call8_types[TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        call8_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         string_concat_concat -> call8_types
         call8_types -> EXIT_string
 
         // string_substring[label="substring"]
         // string -> string_substring
-        // call9_types[TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        // call9_types [TYPES="[string]", MODS="[...]", label="TYPES: string\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         // string_substring -> call9_types
         // string_substr_numeric_from_from[label="from"]
         // call9_types -> string_substr_numeric_from_from
-        // call10_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        // call10_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         // string_substr_numeric_from_from -> call10_types
         // call10_types -> EXIT_string
         // string_substr_numeric_len_len [label="length"]
         // call10_types -> string_substr_numeric_len_len
-        // call11_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        // call11_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
         // string_substr_numeric_len_len -> call11_types
         // call11_types -> EXIT_string
     }
@@ -512,7 +527,7 @@ digraph G {
     }
     
     subgraph def_types {
-        types [TYPES="[numeric, 3VL Value, array, list expr, string, bool]", label="TYPE(S) (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?, bool?]", shape=octagon, style=filled, color=lightblue]
+        types [TYPES="[numeric, 3VL Value, array, list expr, string]", MODS="[no column spec]", label="TYPE(S) (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?]\nmods=[no column spec]", shape=octagon, style=filled, color=lightblue]
         EXIT_types [label="EXIT GENERIC TYPE(S)", shape=rectangle]
 
         types_select_type[label="type := "]
@@ -538,11 +553,11 @@ digraph G {
         types_select_type_bool -> types_select_type_end
 
 
-        call0_column_spec [TYPE="known", label="column specifier\nTYPE: type", shape=rectangle, style=filled, color=gold]
+        call0_column_spec [TYPE="known", trigger="no column spec", trigger_mode="off", label="column specifier\nTYPE: type\nmod.: 'no column spec'", shape=rectangle, style=filled, color=gold]
         types_select_type_end -> call0_column_spec
         call0_column_spec -> EXIT_types
 
-        call1_Query [TYPES="[known]", MOD="[single value]", label="Query\nmodif.: SINGLE VALUE\nTYPE: type", shape=rectangle, style=filled, color=green]
+        call1_Query [TYPES="[known]", MODS="[single value]", label="Query\nMODS: single value\nTYPE: type", shape=rectangle, style=filled, color=green]
         types_select_type_end -> call1_Query
         call1_Query -> EXIT_types
 
@@ -550,23 +565,23 @@ digraph G {
         types -> types_null
         types_null -> EXIT_types
 
-        call0_numeric [OPTIONAL="numeric", label="numeric?", shape=rectangle, style=filled, color=chocolate]
+        call0_numeric [OPTIONAL="numeric", label="numeric?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=chocolate]
         types -> call0_numeric
         call0_numeric -> EXIT_types
 
-        call1_VAL_3 [OPTIONAL="3VL Value", label="3VL Value?", shape=rectangle, style=filled, color=red]
+        call1_VAL_3 [OPTIONAL="3VL Value", label="3VL Value?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=red]
         types -> call1_VAL_3
         call1_VAL_3 -> EXIT_types
 
-        call0_string [OPTIONAL="string", label="string?", shape=rectangle, style=filled, color=pink]
+        call0_string [OPTIONAL="string", label="string?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=pink]
         types -> call0_string
         call0_string -> EXIT_types
 
-        call0_list_expr [OPTIONAL="list expr", TYPES="[known]", label="list expr?\nTYPES: [...types]", shape=rectangle, style=filled, color=blue]
+        call0_list_expr [OPTIONAL="list expr", TYPES="[known]", MODS="[...]", label="list expr?\nTYPES: [...types]\nMODS: [...mods]", shape=rectangle, style=filled, color=blue]
         types -> call0_list_expr
         call0_list_expr -> EXIT_types
 
-        call0_array [OPTIONAL="array", TYPES="[known]", label="array?\nTYPES: [...types]", shape=rectangle, style=filled, color=yellow]
+        call0_array [OPTIONAL="array", TYPES="[known]", MODS="[...]", label="array?\nTYPES: [...types]\nMODS: [...mods]", shape=rectangle, style=filled, color=yellow]
         types -> call0_array
         call0_array -> EXIT_types
         
@@ -576,10 +591,10 @@ digraph G {
     }
 
     subgraph def_types_all {
-        types_all [label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
+        types_all [label="TYPES: ALL\nmods: [no column spec]", MODS="[no column spec]", shape=rectangle, style=filled, color=orange]
         EXIT_types_all [label="EXIT TYPES: ALL", shape=rectangle]
 
-        call0_types [TYPES="[numeric, 3VL Value, array, list expr, string, bool]", label="TYPES: numeric, 3VL Value, array, list expr, string, bool", shape=rectangle]
+        call0_types [TYPES="[numeric, 3VL Value, array, list expr, string]", MODS="[...]", label="TYPES: numeric, 3VL Value, array, list expr, string\nMODS: [...mods]", shape=rectangle]
         types_all -> call0_types
         call0_types -> EXIT_types_all
     }
@@ -597,29 +612,29 @@ digraph G {
     }
 
     subgraph def_array {
-        array [TYPES="[numeric, 3VL Value, string, list expr, array, bool]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]", shape=octagon, style=filled, color=yellow]
+        array [TYPES="[numeric, 3VL Value, string, list expr, array]", MODS="[no column spec]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=yellow]
         EXIT_array[label="EXIT array"]
 
-        call50_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call50_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         call50_types -> call50_types
 
-        call12_types [OPTIONAL="numeric", TYPES="[numeric]", label="TYPE: numeric?", shape=rectangle, style=filled, color=lightblue]
+        call12_types [OPTIONAL="numeric", TYPES="[numeric]", label="TYPE: numeric?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         array -> call12_types
         call12_types -> call50_types
 
-        call13_types [OPTIONAL="3VL Value", TYPES="[3VL Value]", label="TYPE: 3VL Value?", shape=rectangle, style=filled, color=lightblue]
+        call13_types [OPTIONAL="3VL Value", TYPES="[3VL Value]", label="TYPE: 3VL Value?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         array -> call13_types
         call13_types -> call50_types
 
-        call31_types [OPTIONAL="string", TYPES="[string]", label="TYPE: string?", shape=rectangle, style=filled, color=lightblue]
+        call31_types [OPTIONAL="string", TYPES="[string]", label="TYPE: string?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         array -> call31_types
         call31_types -> call50_types
 
-        call51_types [OPTIONAL="list expr", TYPES="[list expr]", label="TYPE: list expr?", shape=rectangle, style=filled, color=lightblue]
+        call51_types [OPTIONAL="list expr", TYPES="[list expr]", label="TYPE: list expr?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         array -> call51_types
         call51_types -> call50_types
 
-        call14_types [OPTIONAL="array", TYPES="[array]", label="TYPE: array?", shape=rectangle, style=filled, color=lightblue]
+        call14_types [OPTIONAL="array", TYPES="[array]", label="TYPE: array?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         array -> call14_types
         call14_types -> call50_types
         
@@ -631,28 +646,28 @@ digraph G {
     }
 
     subgraph def_list_expr {
-        list_expr[TYPES="[numeric, 3VL Value, string, list expr, array, bool]", label="list expr\ntypes=[numeric?, 3VL Value?, string?, list expr?, array?]", shape=octagon, style=filled, color=blue]
+        list_expr[TYPES="[numeric, 3VL Value, string, list expr, array, bool]", MODS="[no column spec]", label="list expr\ntypes=[numeric?, 3VL Value?, string?, list expr?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=blue]
         EXIT_list_expr[label="EXIT list expr"]
 
-        call49_types [TYPES="[compatible]", label="TYPES: [compatible]", shape=rectangle, style=filled, color=lightblue]
+        call49_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
 
-        call16_types [OPTIONAL="numeric", TYPES="[numeric]", label="TYPE: numeric?", shape=rectangle, style=filled, color=lightblue]
+        call16_types [OPTIONAL="numeric", TYPES="[numeric]", label="TYPE: numeric?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call16_types
         call16_types -> call49_types
 
-        call17_types [OPTIONAL="3VL Value", TYPES="[3VL Value]", label="TYPE: 3VL Value?", shape=rectangle, style=filled, color=lightblue]
+        call17_types [OPTIONAL="3VL Value", TYPES="[3VL Value]", label="TYPE: 3VL Value?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call17_types
         call17_types -> call49_types
 
-        call18_types [OPTIONAL="string", TYPES="[string]", label="TYPE: string?", shape=rectangle, style=filled, color=lightblue]
+        call18_types [OPTIONAL="string", TYPES="[string]", label="TYPE: string?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call18_types
         call18_types -> call49_types
 
-        call19_types [OPTIONAL="list expr", TYPES="[list expr]", label="TYPE: list expr?", shape=rectangle, style=filled, color=lightblue]
+        call19_types [OPTIONAL="list expr", TYPES="[list expr]", label="TYPE: list expr?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call19_types
         call19_types -> call49_types
 
-        call20_types [OPTIONAL="array", TYPES="[array]", label="TYPE: array?", shape=rectangle, style=filled, color=lightblue]
+        call20_types [OPTIONAL="array", TYPES="[array]", label="TYPE: array?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call20_types
         call20_types -> call49_types
         
@@ -846,7 +861,7 @@ digraph G {
         EXIT_numeric -> string [color=none]
         EXIT_types -> types_all [color=none]
         EXIT_types_all -> column_spec [color=none]
-        EXIT_column_spec -> array[color=none]
+        EXIT_column_spec -> array [color=none]
         EXIT_array -> list_expr[color=none]
         EXIT_Query -> group_by [color=none]
         EXIT_group_by -> SELECT_projection [color=none]
