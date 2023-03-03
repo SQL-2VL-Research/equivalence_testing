@@ -373,16 +373,13 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     with_hints: vec![],
                     columns_definition: None,
                 },
-                "call0_Query" => {
-                    println!("query");
-                    TableFactor::Derived {
+                "call0_Query" => TableFactor::Derived {
                     lateral: false,
                     subquery: Box::new(self.handle_query()),
                     alias: Some(TableAlias {
                         name: self.current_query_rm.new_ident(),
                         columns: vec![],
-                    })}
-                },
+                    })},
                 "EXIT_FROM" => break,
                 any => self.panic_unexpected(any)
             }, joins: vec![] });
@@ -445,7 +442,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 }
             }
             "call0_aggregate" => {
-                select_body.projection.push(SelectItem::UnnamedExpr(self.handle_aggregate(Some(TypesSelectedType::Numeric), None)));
+                select_body.projection.push(SelectItem::UnnamedExpr(self.handle_aggregate(Some(TypesSelectedType::Any), None)));
                 self.expect_state("EXIT_SELECT");
             }
             any => self.panic_unexpected(any)
@@ -989,10 +986,10 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
 
     /// subgraph def_aggregate
     /// TODO: add alias, check for which functions DISTINCT is possible
+    /// TODO: use function with existing names
     
     fn handle_aggregate(&mut self, equal_to: Option<TypesSelectedType>,
         compatible_with: Option<TypesSelectedType>) -> Expr {
-        println!("aggregate started");
         self.expect_state("aggregate");   
         self.expect_state("aggregate_select_return_type"); 
         let result;
@@ -1109,7 +1106,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             "call63_types" => {
                                 result = Expr::Function(sqlparser::ast::Function {
                                     name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
-                                    args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
+                                    args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::String), None).1))],
                                     over: None,
                                     distinct: false,
                                     special: false,
