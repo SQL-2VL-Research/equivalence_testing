@@ -74,9 +74,9 @@ digraph G {
 
         limit [label="limit [num]"]
         single_value_false -> limit
-        call52_types [TYPES="[numeric]", MODS="[no column spec]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
-        limit -> call52_types
-        call52_types -> FROM
+        call61_types [TYPES="[numeric]", MODS="[no column spec]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        limit -> call61_types
+        call61_types -> FROM
 
         FROM_multiple_relations [label="multiple relations"]
 
@@ -490,7 +490,7 @@ digraph G {
     }
     
     subgraph def_bool {
-        bool [label="bool", shape=rectangle, style=filled, color=violet]
+        bool [label="bool\nmods: [no column spec]", shape=rectangle, MODS="[no column spec]", style=filled, color=violet]
         EXIT_bool [label = "EXIT bool"]
         
         bool_true [label="TRUE"]
@@ -507,10 +507,10 @@ digraph G {
         BoolXor [label = "XOR"]
         BoolNot [label = "NOT"]
         
-        call53_types [TYPES="[bool]", label="TYPES: bool", shape=rectangle, style=filled, color=lightblue]
+        call62_types [TYPES="[bool]", label="TYPES: bool", shape=rectangle, style=filled, color=lightblue]
         bool -> BoolNot
-        BoolNot -> call53_types
-        call53_types -> EXIT_bool
+        BoolNot -> call62_types
+        call62_types -> EXIT_bool
         
         call54_types [TYPES="[bool]", label="TYPES: bool", shape=rectangle, style=filled, color=lightblue]
         bool -> BinaryBoolOp
@@ -527,7 +527,7 @@ digraph G {
     }
     
     subgraph def_types {
-        types [TYPES="[numeric, 3VL Value, array, list expr, string]", MODS="[no column spec]", label="TYPE(S) (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?]\nmods=[no column spec]", shape=octagon, style=filled, color=lightblue]
+        types [TYPES="[numeric, 3VL Value, array, list expr, string, bool]", MODS="[no column spec]", label="TYPE(S) (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?]\nmods=[no column spec]", shape=octagon, style=filled, color=lightblue]
         EXIT_types [label="EXIT GENERIC TYPE(S)", shape=rectangle]
 
         types_select_type[label="type := "]
@@ -585,7 +585,7 @@ digraph G {
         types -> call0_array
         call0_array -> EXIT_types
         
-        call0_bool [OPTIONAL="bool", label="bool?", shape=rectangle, style=filled, color=violet]
+        call0_bool [OPTIONAL="bool", TYPES="[known]", MODS="[...]", label="bool?\nMODS: [...mods]", shape=rectangle, style=filled, color=violet]
         types -> call0_bool
         call0_bool -> EXIT_types
     }
@@ -612,7 +612,7 @@ digraph G {
     }
 
     subgraph def_array {
-        array [TYPES="[numeric, 3VL Value, string, list expr, array]", MODS="[no column spec]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=yellow]
+        array [TYPES="[numeric, 3VL Value, string, list expr, array, bool]", MODS="[no column spec]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=yellow]
         EXIT_array[label="EXIT array"]
 
         call50_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
@@ -638,7 +638,7 @@ digraph G {
         array -> call14_types
         call14_types -> call50_types
         
-        call60_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?", shape=rectangle, style=filled, color=lightblue]
+        call60_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?\nMODS: [...mods]", shape=rectangle, MODS="[...]", style=filled, color=lightblue]
         array -> call60_types
         call60_types -> call50_types
 
@@ -671,7 +671,7 @@ digraph G {
         list_expr -> call20_types
         call20_types -> call49_types
         
-        call59_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?", shape=rectangle, style=filled, color=lightblue]
+        call59_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call59_types
         call59_types -> call49_types
 

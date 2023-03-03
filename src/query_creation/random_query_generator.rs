@@ -2,9 +2,9 @@
 mod query_info;
 
 use smol_str::SmolStr;
-use sqlparser::{ast::{
+use sqlparser::ast::{
     Expr, Ident, Query, Select, SetExpr, TableAlias, TableFactor,
-    TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, SelectItem, ObjectName, WildcardAdditionalOptions,
+    TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, SelectItem, ObjectName, WildcardAdditionalOptions, FunctionArg,
 };
 
 use self::query_info::{TypesSelectedType, RelationManager};
@@ -324,7 +324,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
     fn handle_query(&mut self) -> Query {
         self.dynamic_model.notify_subquery_creation_begin();
         self.expect_state("Query");
-
+        
         let select_limit = match self.next_state().as_str() {
             "single_value_true" => {
                 self.expect_state("FROM");
@@ -333,7 +333,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             "single_value_false" => {
                 match self.next_state().as_str() {
                     "limit" => {
-                        self.expect_state("call52_types");
+                        self.expect_state("call61_types");
                         let num = self.handle_types(Some(TypesSelectedType::Numeric), None).1;
                         self.expect_state("FROM");
                         Some(num)
@@ -373,13 +373,15 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     with_hints: vec![],
                     columns_definition: None,
                 },
-                "call0_Query" => TableFactor::Derived {
+                "call0_Query" => {
+                    println!("query");
+                    TableFactor::Derived {
                     lateral: false,
                     subquery: Box::new(self.handle_query()),
                     alias: Some(TableAlias {
                         name: self.current_query_rm.new_ident(),
                         columns: vec![],
-                    })
+                    })}
                 },
                 "EXIT_FROM" => break,
                 any => self.panic_unexpected(any)
@@ -916,7 +918,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
         Expr::Array(Array {
             elem: array,
             named: true
-            named: true
         })
     }
 
@@ -973,7 +974,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 Expr::BinaryOp { left: Box::new(operand_1), op: (binary_bool_op), right: Box::new(operand_2) }
             },
             "BoolNot" => {
-                self.expect_state("call53_types");
+                self.expect_state("call62_types");
                 //TODO: is Bool compatible_with 3vl ?!
                 Expr::UnaryOp { op: UnaryOperator::Not, expr: Box::new( self.handle_types(
                     Some(TypesSelectedType::Bool), None
@@ -991,6 +992,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
     
     fn handle_aggregate(&mut self, equal_to: Option<TypesSelectedType>,
         compatible_with: Option<TypesSelectedType>) -> Expr {
+        println!("aggregate started");
         self.expect_state("aggregate");   
         self.expect_state("aggregate_select_return_type"); 
         let result;
@@ -1005,6 +1007,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Wildcard)],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             arm @ ("COUNT_distinct" | "call8_types_all") => {
@@ -1021,6 +1024,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types_all().1))],
                                     over: None,
                                     distinct: count_distinct,
+                                    special: false,
                                 });
                             },
                             any => self.panic_unexpected(any),            
@@ -1034,17 +1038,17 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
 
                             },
                             "call3_array" => {
                                 result = Expr::Function(sqlparser::ast::Function {
                                     name: ObjectName(vec![Ident{value: "MAX".to_string(), quote_style: (None)}]),
-
-                                    //TODO wrong type of array is being generated!
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_array()))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             any => self.panic_unexpected(any),            
@@ -1058,16 +1062,16 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             "call3_array" => {
                                 result = Expr::Function(sqlparser::ast::Function {
                                     name: ObjectName(vec![Ident{value: "MAX".to_string(), quote_style: (None)}]),
-
-                                    //TODO wrong type of array is being generated!
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_array()))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             any => self.panic_unexpected(any),            
@@ -1081,6 +1085,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
                     },
                     any => self.panic_unexpected(any),                
@@ -1095,6 +1100,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::String), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
 
                     },
@@ -1106,16 +1112,16 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             "call2_array" => {
                                 result = Expr::Function(sqlparser::ast::Function {
                                     name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
-
-                                    //TODO wrong type of array is being generated!
                                     args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_array()))],
                                     over: None,
                                     distinct: false,
+                                    special: false,
                                 });
                             },
                             any => self.panic_unexpected(any),            
@@ -1135,6 +1141,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
                     },
                     "call63_types" => {
@@ -1143,6 +1150,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::String), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
                     },
                     "call56_types" => {
@@ -1151,6 +1159,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
                     },
                     any => self.panic_unexpected(any),
@@ -1165,6 +1174,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
                             over: None,
                             distinct: false,
+                            special: false,
                         });
                     },
                     any => self.panic_unexpected(any),
