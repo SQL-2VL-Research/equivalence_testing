@@ -5,6 +5,7 @@ use smol_str::SmolStr;
 use sqlparser::ast::{
     Expr, Ident, Query, Select, SetExpr, TableAlias, TableFactor,
     TableWithJoins, Value, BinaryOperator, UnaryOperator, TrimWhereField, Array, SelectItem, ObjectName, WildcardAdditionalOptions, FunctionArg,
+    ArrayAgg, 
 };
 
 use self::query_info::{TypesSelectedType, RelationManager};
@@ -1099,7 +1100,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             distinct: false,
                             special: false,
                         });
-
                     },
                     arm @ ("MIN_string" | "MAX_string") => {
                         match self.next_state().as_str() {
@@ -1133,30 +1133,30 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 self.expect_state("ARRAY_AGG");
                 match self.next_state().as_str() {
                     "call52_types" => {
-                        result = Expr::Function(sqlparser::ast::Function {
-                            name: ObjectName(vec![Ident{value: "ARRAY_AGG".to_string(), quote_style: (None)}]),
-                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
-                            over: None,
+                        result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
-                            special: false,
+                            expr: Box::new(self.handle_types(Some(TypesSelectedType::Numeric), None).1),
+                            order_by: None,
+                            limit: None,
+                            within_group: false,
                         });
                     },
                     "call63_types" => {
-                        result = Expr::Function(sqlparser::ast::Function {
-                            name: ObjectName(vec![Ident{value: "ARRAY_AGG".to_string(), quote_style: (None)}]),
-                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::String), None).1))],
-                            over: None,
+                        result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
-                            special: false,
+                            expr: Box::new(self.handle_types(Some(TypesSelectedType::String), None).1),
+                            order_by: None,
+                            limit: None,
+                            within_group: false,
                         });
                     },
                     "call56_types" => {
-                        result = Expr::Function(sqlparser::ast::Function {
-                            name: ObjectName(vec![Ident{value: "ARRAY_AGG".to_string(), quote_style: (None)}]),
-                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
-                            over: None,
+                        result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
-                            special: false,
+                            expr: Box::new(self.handle_types(Some(TypesSelectedType::Bool), None).1),
+                            order_by: None,
+                            limit: None,
+                            within_group: false,
                         });
                     },
                     any => self.panic_unexpected(any),

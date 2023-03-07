@@ -19,7 +19,7 @@ struct ProgramArgs {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
     /// number of generated queries
-    #[structopt(default_value = "20")]
+    #[structopt(default_value = "200")]
     num_generate: usize,
     /// Use AntiCallModel for dynamic probabilities
     #[structopt(short, long)]
