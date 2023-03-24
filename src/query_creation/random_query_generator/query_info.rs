@@ -6,6 +6,7 @@ use rand::{SeedableRng, Rng};
 use sqlparser::ast::{Ident, ObjectName};
 
 #[derive(Debug, Clone)]
+#[derive(Eq, Hash, PartialEq)]
 pub struct Relation {
     name: SmolStr,
     free_column_name_index: u32,
@@ -37,6 +38,7 @@ pub struct RelationManager {
     relations: HashMap<SmolStr, Relation>,
     free_relation_name_index: u32,
     rng: ChaCha8Rng,
+    columns_in_grouping: HashMap<Relation, Vec<Ident>>,
 }
 
 impl RelationManager {
@@ -44,7 +46,8 @@ impl RelationManager {
         Self {
             relations: HashMap::<_, _>::new(),
             free_relation_name_index: 1,
-            rng: ChaCha8Rng::seed_from_u64(1)
+            rng: ChaCha8Rng::seed_from_u64(1),
+            columns_in_grouping: HashMap::<_, _>::new(),
         }
     }
 
@@ -69,6 +72,13 @@ impl RelationManager {
 
     pub fn new_ident(&mut self) -> Ident {
         Ident::new(self.new_name())
+    }
+
+    pub fn push_grouping_ident(&mut self, relation: Relation, ident: Ident) {
+        //TODO push to vector instead of inserting
+        let k = relation.clone().to_owned();
+        let v = vec![ident.clone()].to_owned();
+        self.columns_in_grouping.insert(k, v);
     }
 }
 

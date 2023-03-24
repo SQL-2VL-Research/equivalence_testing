@@ -19,7 +19,7 @@ struct ProgramArgs {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
     /// number of generated queries
-    #[structopt(default_value = "200")]
+    #[structopt(default_value = "25")]
     num_generate: usize,
     /// Use AntiCallModel for dynamic probabilities
     #[structopt(short, long)]
@@ -34,7 +34,7 @@ fn run_generation<DynMod: DynamicModel, StC: StateChooser>(markov_generator: Mar
     for i in 0..num_generate {
         let query_ast = Box::new(generator.next().unwrap());
         let query_string = query_ast.to_string();
-        // println!("Generated query: {query_string}");
+        println!("Generated query: {query_string}");
         let parsed_ast = string_to_query(&query_string);
         if parsed_ast != query_ast {
             println!("AST mismatch! For query: {query_string}");

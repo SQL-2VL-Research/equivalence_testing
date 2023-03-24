@@ -1,6 +1,8 @@
 #[macro_use]
 mod query_info;
 
+use std::vec;
+
 use smol_str::SmolStr;
 use sqlparser::ast::{
     Expr, Ident, Query, Select, SetExpr, TableAlias, TableFactor,
@@ -397,7 +399,31 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             any => self.panic_unexpected(any)
         }
 
-        self.expect_state("SELECT");
+        //self.expect_state("SELECT");
+        match self.next_state().as_str() {
+            "SELECT" => {},
+            "call0_group_by" => {
+                select_body.group_by.push(self.handle_group_by());
+                match self.next_state().as_str() {
+                    "SELECT" => {
+                        //TODO
+                    },
+                    "call0_having" => {
+                        self.handle_having();
+                        //TODO
+                        self.expect_state("SELECT");
+                    },
+                    any => self.panic_unexpected(any)
+                }
+            },
+            "call0_having" => {
+                self.handle_having();
+                self.expect_state("SELECT");
+            },
+            any => self.panic_unexpected(any)
+        }
+
+
         select_body.distinct = match self.next_state().as_str() {
             "SELECT_DISTINCT" => {
                 self.expect_state("SELECT_distinct_end");
@@ -448,7 +474,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             }
             any => self.panic_unexpected(any)
         }
-        
 
         self.expect_state("EXIT_Query");
         self.dynamic_model.notify_subquery_creation_end();
@@ -965,7 +990,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     "BoolOr" => BinaryOperator::Or,
                     "BoolXor" => BinaryOperator::Xor,
                     any => self.panic_unexpected(any)
-                    
                 };
                 self.expect_state("call55_types");
                 let operand_2 = self.handle_types(Some(TypesSelectedType::Bool), None).1;
@@ -986,9 +1010,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
     }
 
     /// subgraph def_aggregate
-    /// TODO: add alias, check for which functions DISTINCT is possible
-    /// TODO: use function with existing names
-    
+    /// TODO: add alias, check for which functions DISTINCT is possible, add statistics functions
     fn handle_aggregate(&mut self, equal_to: Option<TypesSelectedType>,
         compatible_with: Option<TypesSelectedType>) -> Expr {
         self.expect_state("aggregate");   
@@ -1040,6 +1062,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                                 });
 
                             },
+                            //TODO multiple arguments 
                             "call3_array" => {
                                 result = Expr::Function(sqlparser::ast::Function {
                                     name: ObjectName(vec![Ident{value: "MAX".to_string(), quote_style: (None)}]),
@@ -1132,7 +1155,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             "aggregate_select_type_array" => {
                 self.expect_state("ARRAY_AGG");
                 match self.next_state().as_str() {
-                    "call52_types" => {
+                    "call52_types" => {   
                         result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
                             expr: Box::new(self.handle_types(Some(TypesSelectedType::Numeric), None).1),
@@ -1150,7 +1173,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             within_group: false,
                         });
                     },
-                    "call56_types" => {
+                         "call56_types" => {
                         result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
                             expr: Box::new(self.handle_types(Some(TypesSelectedType::Bool), None).1),
@@ -1169,7 +1192,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                         result = Expr::Function(sqlparser::ast::Function {
                             name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
                             args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
-                            over: None,
+                            over: None, 
                             distinct: false,
                             special: false,
                         });
@@ -1181,6 +1204,151 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 
         }
         self.expect_state("EXIT_aggregate");
+        result
+    }
+
+    /// subgraph def_group_by
+    // TODO add grouping function
+    fn handle_group_by(&mut self) -> Expr {
+        self.expect_state("group_by");
+        let result;
+        match self.next_state().as_str() {
+            //TODO multiple columns
+            "grouping_column" => {
+                result = Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident());
+            },
+            "grouping_cube" => {
+                let mut arg: Vec<Vec<Expr>> = Vec::new();
+                arg.push(vec![Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident())]);
+                loop {
+                    match self.next_state().as_str() {
+                        "cube_relations" => {
+                            arg.push(vec![Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident())]);
+                        },
+                        "grouping_cube" => {},
+                        "EXIT_cube" => {
+                            result = Expr::Cube((arg));
+                            break;
+                        },
+                        any => self.panic_unexpected(any)       
+                    }
+                }
+            },
+            "grouping_rollup" => {
+                let mut arg: Vec<Vec<Expr>> = Vec::new();
+                arg.push(vec![Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident())]);
+                loop {
+                    match self.next_state().as_str() {
+                        "rollup_relations" => {
+                            arg.push(vec![Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident())]);
+                        },
+                        "grouping_rollup" => {},
+                        "EXIT_rollup" => {
+                            result = Expr::Cube((arg));
+                            break;
+                        },
+                        any => self.panic_unexpected(any)       
+                    }
+                }
+            },
+            "grouping_sets" => {
+                let mut arg: Vec<Vec<Expr>> = Vec::new();
+                //result = Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident());
+                self.expect_state("group_new_set");
+                let mut new_set: Vec<Expr> = Vec::new();
+                loop {
+                    match self.next_state().as_str() {
+                        "group_set_element" => {
+                            new_set.push(Expr::Identifier(self.current_query_rm.get_random_relation().gen_ident()));
+                        },
+                        "EXIT_sets" => {
+                            arg.push(new_set.clone());
+                            result = Expr::GroupingSets((arg.to_owned()));
+                            break;
+                        },
+                        "grouping_sets" => {
+                            arg.push(new_set.clone());
+                            new_set = Vec::new();
+                        },
+                        "group_new_set" => {},
+                        any => self.panic_unexpected(any)       
+                        
+                    }
+                }
+            },
+            any => self.panic_unexpected(any)
+        }
+        self.expect_state("EXIT_group_by");
+        result
+    }
+
+    /// subgraph def_having
+    // TODO option for aggregations
+    fn handle_having(&mut self) -> Expr {
+        let result;
+        self.expect_state("having");
+        match self.next_state().as_str() {
+            "not_having_aggr" => {
+                self.expect_state("call64_types");
+                result = self.handle_types(Some(TypesSelectedType::Val3), None).1;
+            },
+            "having_aggr" => {
+                match self.next_state().as_str() {
+                    "having_bool" => {
+                        self.expect_state("call66_types");
+                        let left_arg = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                        self.expect_state("having_bool_op");
+                        let op = match self.next_state().as_str() {
+                            "having_or" => BinaryOperator::Or,
+                            "having_and" => BinaryOperator::And,
+                            "having_xor" => BinaryOperator::Xor,
+                            any => self.panic_unexpected(any)
+                        };
+                        self.expect_state("call2_aggregate");
+                        let right_arg = self.handle_aggregate(Some(TypesSelectedType::Bool), None);
+                        result = Expr::BinaryOp { left: Box::new(left_arg), op: op, right: Box::new(right_arg) }
+                    },
+                    "having_numeric" => {
+                        self.expect_state("call65_types");
+                        let left_arg = self.handle_types(Some(TypesSelectedType::Numeric), None).1;
+                        self.expect_state("having_num_op");
+                        let op = match self.next_state().as_str() {
+                            "having_eq" => BinaryOperator::Eq,
+                            "having_leq" => BinaryOperator::LtEq,
+                            "having_le" => BinaryOperator::Lt,
+                            "having_neq" => BinaryOperator::NotEq,
+                            any => self.panic_unexpected(any)
+                        };
+                        self.expect_state("call1_aggregate");
+                        let right_arg = self.handle_aggregate(Some(TypesSelectedType::Numeric), None);
+                        result = Expr::BinaryOp { left: Box::new(left_arg), op: op, right: Box::new(right_arg) }
+                    },
+                    "having_string" => {
+                        self.expect_state("call67_types");
+                        let arg = self.handle_types(Some(TypesSelectedType::String), None).1;
+                        let having_string_like_not = match self.next_state().as_str() {
+                            "having_not_like" => {
+                                self.expect_state("having_like");
+                                true
+                            },
+                            "having_like" => false,
+                            any => self.panic_unexpected(any)
+                        };
+                        self.expect_state("call3_aggregate");
+                        let pattern = self.handle_aggregate(Some(TypesSelectedType::String), None);
+                        result = Expr::Like {
+                            negated: having_string_like_not,
+                            expr: Box::new(arg),
+                            pattern: Box::new(pattern),
+                            escape_char: None,
+                        }
+                    },
+                    any => self.panic_unexpected(any)
+                }
+            },
+            any => self.panic_unexpected(any)
+        }
+        self.expect_state("EXIT_having");
         result
     }
 

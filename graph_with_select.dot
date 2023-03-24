@@ -102,13 +102,19 @@ digraph G {
         SELECT []
         EXIT_WHERE [label="EXIT WHERE"]
         call53_types -> EXIT_WHERE
+        EXIT_WHERE -> SELECT
         EXIT_FROM -> EXIT_WHERE
 
+        call0_group_by[label="GROUP BY"]
+        EXIT_WHERE -> call0_group_by
+        
+        call0_having[label = "HAVING"]
+        call0_group_by -> call0_having
+        EXIT_WHERE -> call0_having
         SELECT []
         EXIT_SELECT [label="EXIT SELECT"]
-
-        EXIT_WHERE -> SELECT
-
+        call0_group_by -> SELECT
+        call0_having -> SELECT
         // call0_group_by [label="GROUP BY Statement", TYPES="[known]", shape=rectangle, style=filled, color=gray]
         // EXIT_WHERE -> call0_group_by
         // call0_group_by -> SELECT
@@ -678,63 +684,118 @@ digraph G {
         call49_types -> call49_types
         call49_types -> EXIT_list_expr
     }
-
+    
     subgraph def_group_by {
         group_by [label="GROUP BY", shape=rectangle, style=filled, color=gray]
         EXIT_group_by [label="EXIT GROUP BY"]
 
-        grouping_rollup [label="rollup"]
-        group_by -> grouping_rollup
+        grouping_column[label="column"]
+        grouping_sets[label="grouping sets"]
+        grouping_cube[label="cube"]
+        grouping_rollup[label="rollup"]
+        
+        group_by -> grouping_column
+        
+        group_by -> grouping_sets
+        group_new_set[label = "new set"]
+        group_set_element [label = "new element\n in set"]
+        EXIT_sets[label = "EXIT sets"]
+        grouping_sets -> group_new_set
+        group_new_set -> group_set_element
+        group_set_element -> grouping_sets
+        group_set_element -> group_new_set
+        group_set_element -> EXIT_sets
 
-        grouping_cube [label="cube"]
         group_by -> grouping_cube
+        cube_relations[label="relations"]
+        grouping_cube -> cube_relations
+        cube_relations -> grouping_cube
+        EXIT_cube [label = "EXIT cube"]
+        cube_relations -> EXIT_cube
 
-        grouping_set [label="grouping set"]
-        group_by -> grouping_set
+        group_by -> grouping_rollup
+        rollup_relations[label="relations"]
+        grouping_rollup -> rollup_relations
+        rollup_relations -> grouping_rollup
+        EXIT_rollup [label = "EXIT rollup"]
+        rollup_relations -> EXIT_rollup
 
-        //columns must appear in FROM, but not necesserily in SELECT
-        group_by_col_list [label="array of column names\nTYPES: STRING", TYPES="string", shape=rectangle]
-        group_by -> group_by_col_list
+        grouping_column -> EXIT_group_by
+        EXIT_sets -> EXIT_group_by
+        EXIT_cube -> EXIT_group_by
+        EXIT_rollup -> EXIT_group_by
+    
 
-        grouping_set -> group_by_col_list
-        grouping_set -> grouping_cube
-        grouping_set -> grouping_rollup
-
-        grouping_rollup -> group_by_col_list
-        grouping_cube -> group_by_col_list
-
-        column_name [label="column name"]
-        group_by_col_list -> column_name
-        column_name -> group_by_col_list
-
-        column_name -> EXIT_group_by
+        
     }
 
     subgraph def_having {
         having [label="HAVING", shape=rectangle, style=filled, color=mediumvioletred]
         EXIT_having [label="EXIT HAVING"]
+        not_having_aggr [label = "without aggregation"]
+        call64_types [TYPES="[3VL Value]", label = "TYPES: 3VL", shape=rectangle, style=filled, color=lightblue]
+        having -> not_having_aggr
+        not_having_aggr -> call64_types
+        call64_types -> EXIT_having
 
-        having_condition [label="HAVING condition"]
-        having -> having_condition
+        having_aggr [label="with aggregation"]
+        having -> having_aggr
+        having_bool[label="bool"]
+        having_string[label="string"]
+        having_numeric[label="numeric"]
+        
+        having_aggr -> having_numeric
+        having_aggr -> having_bool
+        having_aggr -> having_string
 
-        having_not [label="NOT"]
-        call45_types [TYPES="[3VL Value]", label="TYPE: [3VL]", shape=rectangle, style=filled, color=lightblue]
-        call46_types [TYPES="[3VL Value]", label="TYPE: [3VL]", shape=rectangle, style=filled, color=lightblue]
-        having_logical_expr [label="AND | OR ?"]
+        call65_types[TYPES="[numeric]", label = "TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call66_types[TYPES="[bool]", label = "TYPES: bool", shape=rectangle, style=filled, color=lightblue]
+        call67_types[TYPES="[string]", label = "TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        
+        call1_aggregate[TYPES="[numeric]", label="numeric aggregate", shape="rectagle", style=filled, color=purple]
+        call2_aggregate[TYPES="[bool]", label="bool aggregate", shape="rectagle", style=filled, color=purple]
+        call3_aggregate[TYPES="[string]", label = "string aggregate", shape="rectagle", style=filled, color=purple]        
+        
+        having_num_op[label="select op."]
+        having_numeric -> call65_types
+        call65_types -> having_num_op
+        having_eq[label="="]
+        having_neq[label="<>"]
+        having_le[label="<"]
+        having_leq[label="<="]
+        having_num_op -> having_le
+        having_num_op -> having_neq
+        having_num_op -> having_eq
+        having_num_op -> having_leq
+        having_le -> call1_aggregate
+        having_eq -> call1_aggregate
+        having_neq -> call1_aggregate
+        having_leq -> call1_aggregate
+        call1_aggregate -> EXIT_having
 
-        having_condition -> having_not
-        having_condition -> call45_types
+        having_bool_op[label="select op."]
+        having_bool -> call66_types
+        call66_types -> having_bool_op
+        having_or[label="or"]
+        having_and[label="and"]
+        having_xor[label="xor"]
+        having_bool_op -> having_or
+        having_bool_op -> having_xor
+        having_bool_op -> having_and
+        having_or -> call2_aggregate
+        having_xor -> call2_aggregate
+        having_and -> call2_aggregate
+        call2_aggregate -> EXIT_having
 
-        call45_types -> having_logical_expr
-        having_not -> call45_types
-
-        having_not_optional [label="NOT"]
-        having_logical_expr -> having_not_optional
-        having_not_optional -> call46_types
-        having_logical_expr -> call46_types
-
-        call45_types -> EXIT_having
-        call46_types -> EXIT_having
+        having_like[label="like"]
+        having_not_like[label="not"]
+        having_string -> call67_types
+        call67_types -> having_not_like
+        call67_types -> having_like
+        having_not_like -> having_like
+        having_like -> call3_aggregate
+        call3_aggregate -> EXIT_having
+        //having -> EXIT_having
     }       
 
     subgraph def_aggregate {
@@ -744,10 +805,10 @@ digraph G {
         aggregate_select_return_type [label="return type:="]
         //TODO make these types an "OPTION"
         aggregate -> aggregate_select_return_type
-        aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric"]
-        aggregate_select_type_array[OPTIONAL="array", label="array"]
-        aggregate_select_type_string[OPTIONAL="string", label="string"]
-        aggregate_select_type_bool[OPTIONAL="bool", label="bool"]
+        aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
+        aggregate_select_type_array[OPTIONAL="array", label="array?"]
+        aggregate_select_type_string[OPTIONAL="string", label="string?"]
+        aggregate_select_type_bool[OPTIONAL="bool", label="bool?"]
 
         aggregate_select_return_type -> aggregate_select_type_numeric
         aggregate_select_return_type -> aggregate_select_type_array
