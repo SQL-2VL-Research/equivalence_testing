@@ -803,7 +803,6 @@ digraph G {
         EXIT_aggregate [label="EXIT aggregate"]
         
         aggregate_select_return_type [label="return type:="]
-        //TODO make these types an "OPTION"
         aggregate -> aggregate_select_return_type
         aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
         aggregate_select_type_array[OPTIONAL="array", label="array?"]
@@ -865,9 +864,6 @@ digraph G {
         EVERY -> call56_types
 
         MAX_string[label = "MAX"]
-        //aggregate_select_type_numeric -> MAX
-        //max_min_numeric -> call52_types
-        //max_min_numeric -> call57_types
         call2_array [TYPES="[string]", label = "ARRAY [string]", shape=rectangle, style=filled, color=yellow]
         call2_array -> EXIT_aggregate
         MAX_string -> call2_array
@@ -875,16 +871,12 @@ digraph G {
         MAX_string -> call63_types
 
         MIN_string[label="MIN"]
-        //aggregate_select_type_numeric -> MIN
         MIN_string -> call2_array
         aggregate_select_type_string -> MIN_string
         MIN_string -> call63_types
 
 
         MAX_numeric[label = "MAX"]
-        //aggregate_select_type_numeric -> MAX
-        //max_min_numeric -> call52_types
-        //max_min_numeric -> call57_types
         aggregate_select_type_numeric -> MAX_numeric
         MAX_numeric -> call52_types
         call3_array [TYPES="[numeric]", label = "ARRAY [numeric]", shape=rectangle, style=filled, color=yellow]
@@ -892,7 +884,6 @@ digraph G {
         call3_array -> EXIT_aggregate
 
         MIN_numeric[label="MIN"]
-        //aggregate_select_type_numeric -> MIN
         aggregate_select_type_numeric -> MIN_numeric
         MIN_numeric -> call52_types
         MIN_numeric -> call3_array
@@ -906,6 +897,7 @@ digraph G {
         aggregate_select_type_numeric -> COUNT
         COUNT_wildcard[label="*"]
         COUNT_distinct[label="DISTINCT"]
+        COUNT_distinct_wildcard[label="DISTINCT"]
         call8_types_all [TYPES="[any]", label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
         COUNT -> COUNT_wildcard
         COUNT -> COUNT_distinct
@@ -913,8 +905,74 @@ digraph G {
         COUNT_distinct -> call8_types_all
         call8_types_all -> EXIT_aggregate
         COUNT_wildcard -> EXIT_aggregate
+        COUNT_wildcard -> COUNT_distinct_wildcard
+        COUNT_distinct_wildcard -> EXIT_aggregate
+        
+        CORR[]
+        COVAR_POP[]
+        COVAR_SAMP[]
+        REGR_AVGX[]
+        REGR_AVGY[]
+        REGR_COUNT[]
+        REGR_INTERCEPT[]
+        REGR_R2[]
+        REGR_SLOPE[]
+        REGR_SXX[]
+        REGR_SSY[]
+        REGR_SYY[]
+        
+        aggregate_select_type_numeric -> CORR
+        aggregate_select_type_numeric -> COVAR_POP
+        aggregate_select_type_numeric -> COVAR_SAMP
+        aggregate_select_type_numeric -> REGR_AVGX
+        aggregate_select_type_numeric -> REGR_AVGY
+        aggregate_select_type_numeric -> REGR_COUNT
+        aggregate_select_type_numeric -> REGR_INTERCEPT
+        aggregate_select_type_numeric -> REGR_R2
+        aggregate_select_type_numeric -> REGR_SLOPE
+        aggregate_select_type_numeric -> REGR_SXX
+        aggregate_select_type_numeric -> REGR_SSY
+        aggregate_select_type_numeric -> REGR_SYY
+        
+        call68_types[TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        CORR -> call68_types
+        COVAR_POP  -> call68_types
+        COVAR_SAMP -> call68_types
+        REGR_AVGX -> call68_types
+        REGR_AVGY -> call68_types
+        REGR_COUNT -> call68_types
+        REGR_INTERCEPT -> call68_types
+        REGR_R2 -> call68_types
+        REGR_SLOPE -> call68_types
+        REGR_SXX -> call68_types
+        REGR_SSY -> call68_types
+        REGR_SYY -> call68_types
+        
+        call69_types[TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call68_types -> call69_types
+        call69_types -> EXIT_aggregate
         
         
+        STDDEV[]
+        STDDEV_POP[]
+        STDDEV_SAMP[]
+        VARIANCE[]
+        VAR_POP[]
+        VAR_SAMP[]
+        
+        aggregate_select_type_numeric -> STDDEV
+        aggregate_select_type_numeric -> STDDEV_POP
+        aggregate_select_type_numeric -> STDDEV_SAMP
+        aggregate_select_type_numeric -> VARIANCE
+        aggregate_select_type_numeric -> VAR_POP
+        aggregate_select_type_numeric -> VAR_SAMP
+        
+        STDDEV -> call52_types
+        STDDEV_POP -> call52_types
+        STDDEV_SAMP -> call52_types
+        VARIANCE -> call52_types
+        VAR_POP -> call52_types
+        VAR_SAMP -> call52_types
     }
     
     subgraph ignore {

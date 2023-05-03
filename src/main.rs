@@ -19,7 +19,7 @@ struct ProgramArgs {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
     /// number of generated queries
-    #[structopt(default_value = "25")]
+    #[structopt(default_value = "250")]
     num_generate: usize,
     /// Use AntiCallModel for dynamic probabilities
     #[structopt(short, long)]
@@ -42,7 +42,7 @@ fn run_generation<DynMod: DynamicModel, StC: StateChooser>(markov_generator: Mar
             write!(f_g, "{:#?}", query_ast).unwrap();
             let mut f_p = std::fs::File::create(format!("{i}-p")).unwrap();
             write!(f_p, "{:#?}", parsed_ast).unwrap();
-        }
+        }        
         let equivalent = check_query(query_ast);
         // println!("Equivalent? {:#?}\n", equivalent);
         num_generated += 1;

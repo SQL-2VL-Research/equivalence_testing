@@ -1,14 +1,14 @@
 use sqlparser::parser::Parser;
 
 use sqlparser::ast::{
-    Expr, Query, SetExpr,
+    Expr, Query, SetExpr, ObjectName, Ident,
 };
 use sqlparser::dialect::PostgreSqlDialect;
 
 pub fn string_to_query(input: &str) -> Box<Query> {
     let dialect = PostgreSqlDialect {};
     let ast = match Parser::parse_sql(&dialect, input) {
-        Ok(ast) => ast,
+        Ok(_ast) => _ast,
         Err(err) => {
             println!("Query: {}", input);
             println!("Parsing error! {}", err);
@@ -40,9 +40,9 @@ fn check_where(where_opt: Option<Expr>) -> bool {
 fn check_expr(expr: Expr) -> bool {
     match expr {
         // Identifier e.g. table name or column name
-        Expr::Identifier(_ident) => true,
+        Expr::Identifier(_ident) => false,
         // Multi-part identifier, e.g. `table_alias.column` or `schema.table.col`
-        Expr::CompoundIdentifier(_vec) => true,
+        Expr::CompoundIdentifier(_vec) => false,
         // CompositeAccess (postgres) eg: SELECT (information_schema._pg_expandarray(array['i','i'])).n    
         Expr::CompositeAccess{expr, key: _} => check_expr(*expr),
         // "IS FALSE", "IS TRUE", "IS NULL", "IS NOT NULL" return boolean value and are not nullable
@@ -72,7 +72,12 @@ fn check_expr(expr: Expr) -> bool {
             } else { true }
         },
         // `[ NOT ] IN (SELECT ...)`
-        Expr::InSubquery {expr: _, subquery: _, negated} => !negated,  // !!!!! FALSE IS HERE
+        Expr::InSubquery {expr, subquery, negated} => {
+            if negated {
+                return check_expr(*expr) && check_query(subquery);
+            } 
+            else { true }
+        },  
         // `[ NOT ] IN UNNEST(array_expression)`
         Expr::InUnnest {  
             expr, array_expr, negated,
@@ -96,6 +101,27 @@ fn check_expr(expr: Expr) -> bool {
         Expr::BinaryOp {
             left, op: _, right,
         } => check_expr(*left) && check_expr(*right),
+        /// LIKE
+        Expr::Like {
+            negated,
+            expr,
+            pattern,
+            escape_char,
+        } => check_expr(*expr) && check_expr(*pattern) && negated,
+        /// ILIKE (case-insensitive LIKE)
+        Expr::ILike {
+            negated,
+            expr,
+            pattern,
+            escape_char,
+        } => check_expr(*expr) && check_expr(*pattern) && negated,
+        /// SIMILAR TO regex
+        Expr::SimilarTo {
+            negated,
+            expr,
+            pattern,
+            escape_char,
+        } => check_expr(*expr) && check_expr(*pattern),
         // Any operation e.g. `1 ANY (1)` or `foo > ANY(bar)`, It will be wrapped in the right side of BinaryExpr
         Expr::AnyOp(expr) => check_expr(*expr),
         // ALL operation e.g. `1 ALL (1)` or `foo > ALL(bar)`, It will be wrapped in the right side of BinaryExpr
@@ -106,33 +132,141 @@ fn check_expr(expr: Expr) -> bool {
                 check_expr(*expr)
             } else { true }
         },
+        /// CAST an expression to a different data type e.g. `CAST(foo AS VARCHAR(123))`
+        Expr::Cast {
+            expr,
+            data_type,
+        } => check_expr(*expr),
+        /// TRY_CAST an expression to a different data type e.g. `TRY_CAST(foo AS VARCHAR(123))`
+        //  this differs from CAST in the choice of how to implement invalid conversions
+        Expr::TryCast {
+            expr,
+            data_type,
+        } => check_expr(*expr),
+        /// SAFE_CAST an expression to a different data type e.g. `SAFE_CAST(foo AS FLOAT64)`
+        //  only available for BigQuery: https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-and-operators#safe_casting
+        //  this works the same as `TRY_CAST`
+        Expr::SafeCast {
+            expr,
+            data_type,
+        } => check_expr(*expr),
+        /// AT a timestamp to a different timezone e.g. `FROM_UNIXTIME(0) AT TIME ZONE 'UTC-06:00'`
+        Expr::AtTimeZone {
+            timestamp,
+            time_zone,
+        } => check_expr(*timestamp),
+        /// EXTRACT(DateTimeField FROM <expr>)
+        Expr::Extract {
+            field,
+            expr,
+        } => check_expr(*expr),
+        /// CEIL(<expr> [TO DateTimeField])
+        Expr::Ceil {
+            expr,
+            field,
+        } => check_expr(*expr),
+        /// FLOOR(<expr> [TO DateTimeField])
+        Expr::Floor {
+            expr,
+            field,
+        } => check_expr(*expr),
+        /// POSITION(<expr> in <expr>)
+        Expr::Position { 
+            expr, 
+            r#in,
+        } => check_expr(*expr) && check_expr(*r#in),
         // SUBSTRING(<expr> [FROM <expr>] [FOR <expr>])
         Expr::Substring {
             expr, substring_from, substring_for
         } => {
             let condition_1 = check_expr(*expr);
-
             let condition_2 = match substring_from {
                 Some(x) => check_expr(*x),
                 None => true,
             };
-
             let condition_3 = match substring_for {
                 Some(x) => check_expr(*x),
                 None => true,
             };
-
             return condition_1 && condition_2 && condition_3;
+        },
+        Expr::Trim {
+            expr,
+            // ([BOTH | LEADING | TRAILING]
+            trim_where,
+            trim_what,
+        } => {
+            match trim_what {
+                Some(x) => check_expr(*x),
+                None => true,
+            }
+        },
+        /// OVERLAY(<expr> PLACING <expr> FROM <expr>[ FOR <expr> ]
+        Expr::Overlay {
+            expr,
+            overlay_what,
+            overlay_from,
+            overlay_for,
+        } => {
+            let cond = match overlay_for {
+                Some(x) => check_expr(*x),
+                None => true,
+            };
+            check_expr(*expr) && cond && check_expr(*overlay_from) && check_expr(*overlay_what)
+        },        
+        /// `expr COLLATE collation`
+        Expr::Collate {
+            expr,
+            collation,
+        } => check_expr(*expr),
+        Expr::IntroducedString { introducer, value} => true,
+        /// A constant of form `<data_type> 'value'`.
+        /// This can represent ANSI SQL `DATE`, `TIME`, and `TIMESTAMP` literals (such as `DATE '2020-01-01'`),
+        /// as well as constants of other types (a non-standard PostgreSQL extension).
+        Expr::TypedString { data_type: DataType, value: String } => true,
+        /// Access a map-like object by field (e.g. `column['field']` or `column[4]`        
+        Expr::MapAccess { 
+            column, 
+            keys
+        } => keys.into_iter().all(check_expr) && check_expr(*column),
+        /// Scalar function call e.g. `LEFT(foo, 5)`
+        Expr::Function(Function) => {
+            if (Function.name == ObjectName(vec![Ident{value: "COUNT".to_string(), quote_style: (None)}])) {
+                true
+            }
+            else {
+                false
+            }
+        },
+        /// Aggregate function with filter
+        Expr::AggregateExpressionWithFilter { 
+            expr, 
+            filter
+        } => check_expr(*expr) && check_expr(*filter),
+        /// `CASE [<operand>] WHEN <condition> THEN <result> ... [ELSE <result>] END`
+        Expr::Case {
+            operand,
+            conditions,
+            results,
+            else_result,
+        } => {
+            let mut res = true;
+            res = match operand {
+                Some(x) => check_expr(*x),
+                None => res,
+            };
+            match else_result {
+                Some(x) => {
+                    if !check_expr(*x) { 
+                        res = false;
+                    }
+                }
+                None => {},
+            };
+            return res && conditions.into_iter().all(check_expr) && results.into_iter().all(check_expr)
         },
         // Nested expression e.g. `(foo > bar)` or `(1)`
         Expr::Nested(expr) => check_expr(*expr),
-        // A literal value, such as string, number, date or NULL /// TODO
-        // Expr::Value(value) => {
-        //     if value == sqlparser::ast::Value::Null {
-        //         false
-        //     } else { true }
-        // },
-        // An exists expression `[ NOT ] EXISTS(SELECT ...)`, used in expressions like
         // `WHERE [ NOT ] EXISTS (SELECT ...)`.
         Expr::Exists {subquery, negated} => {
             if negated {
@@ -147,12 +281,10 @@ fn check_expr(expr: Expr) -> bool {
         // The `LISTAGG` function `SELECT LISTAGG(...) WITHIN GROUP (ORDER BY ...)`
         Expr::ListAgg(list_agg) => {
             let condition_1 = check_expr(*list_agg.expr);
-
             let condition_2 = match list_agg.separator {
                 Some(x) => check_expr(*x),
                 None => true,
             };
-
             condition_1 && condition_2
         },
         // The `GROUPING SETS` expr.
@@ -178,9 +310,31 @@ fn check_expr(expr: Expr) -> bool {
         } => {
             check_expr(*obj) && indexes.into_iter().all(check_expr)
         },
+        /// INTERVAL literals, roughly in the following format:
+        /// `INTERVAL '<value>' [ <leading_field> [ (<leading_precision>) ] ]
+        /// [ TO <last_field> [ (<fractional_seconds_precision>) ] ]`,
+        Expr::Interval {
+            value,
+            leading_field,
+            leading_precision,
+            last_field,
+            /// The seconds precision can be specified in SQL source as
+            /// `INTERVAL '__' SECOND(_, x)` (in which case the `leading_field`
+            /// will be `Second` and the `last_field` will be `None`),
+            /// or as `__ TO SECOND(x)`.
+            fractional_seconds_precision,
+        } => check_expr(*value),
         Expr::JsonAccess { left, operator: _, right } => {
             check_expr(*left) && check_expr(*right)
         },
-        _ => true,
+        Expr::MatchAgainst {
+            /// `(<col>, <col>, ...)`.
+            columns,
+            /// `<expr>`.
+            match_value,
+            /// `<search modifier>`
+            opt_search_modifier,
+        } => true,
+        _ => panic!("unexpected agrument"),
     }
 }

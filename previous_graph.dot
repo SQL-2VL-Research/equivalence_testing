@@ -732,7 +732,70 @@ digraph G {
     subgraph def_having {
         having [label="HAVING", shape=rectangle, style=filled, color=mediumvioletred]
         EXIT_having [label="EXIT HAVING"]
-        having -> EXIT_having
+        not_having_aggr [label = "without aggregation"]
+        call64_types [TYPES="[3VL Value]", label = "TYPES: 3VL", shape=rectangle, style=filled, color=lightblue]
+        having -> not_having_aggr
+        not_having_aggr -> call64_types
+        call64_types -> EXIT_having
+
+        having_aggr [label="with aggregation"]
+        having -> having_aggr
+        having_bool[label="bool"]
+        having_string[label="string"]
+        having_numeric[label="numeric"]
+        
+        having_aggr -> having_numeric
+        having_aggr -> having_bool
+        having_aggr -> having_string
+
+        call65_types[TYPES="[numeric]", label = "TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call66_types[TYPES="[bool]", label = "TYPES: bool", shape=rectangle, style=filled, color=lightblue]
+        call67_types[TYPES="[string]", label = "TYPES: string", shape=rectangle, style=filled, color=lightblue]
+        
+        call1_aggregate[TYPES="[numeric]", label="numeric aggregate", shape="rectagle", style=filled, color=purple]
+        call2_aggregate[TYPES="[bool]", label="bool aggregate", shape="rectagle", style=filled, color=purple]
+        call3_aggregate[TYPES="[string]", label = "string aggregate", shape="rectagle", style=filled, color=purple]        
+        
+        having_num_op[label="select op."]
+        having_numeric -> call65_types
+        call65_types -> having_num_op
+        having_eq[label="="]
+        having_neq[label="<>"]
+        having_le[label="<"]
+        having_leq[label="<="]
+        having_num_op -> having_le
+        having_num_op -> having_neq
+        having_num_op -> having_eq
+        having_num_op -> having_leq
+        having_le -> call1_aggregate
+        having_eq -> call1_aggregate
+        having_neq -> call1_aggregate
+        having_leq -> call1_aggregate
+        call1_aggregate -> EXIT_having
+
+        having_bool_op[label="select op."]
+        having_bool -> call66_types
+        call66_types -> having_bool_op
+        having_or[label="or"]
+        having_and[label="and"]
+        having_xor[label="xor"]
+        having_bool_op -> having_or
+        having_bool_op -> having_xor
+        having_bool_op -> having_and
+        having_or -> call2_aggregate
+        having_xor -> call2_aggregate
+        having_and -> call2_aggregate
+        call2_aggregate -> EXIT_having
+
+        having_like[label="like"]
+        having_not_like[label="not"]
+        having_string -> call67_types
+        call67_types -> having_not_like
+        call67_types -> having_like
+        having_not_like -> having_like
+        having_like -> call3_aggregate
+        call3_aggregate -> EXIT_having
+        //having -> EXIT_having
     }       
 
     subgraph def_aggregate {
@@ -740,7 +803,6 @@ digraph G {
         EXIT_aggregate [label="EXIT aggregate"]
         
         aggregate_select_return_type [label="return type:="]
-        //TODO make these types an "OPTION"
         aggregate -> aggregate_select_return_type
         aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
         aggregate_select_type_array[OPTIONAL="array", label="array?"]
@@ -802,9 +864,6 @@ digraph G {
         EVERY -> call56_types
 
         MAX_string[label = "MAX"]
-        //aggregate_select_type_numeric -> MAX
-        //max_min_numeric -> call52_types
-        //max_min_numeric -> call57_types
         call2_array [TYPES="[string]", label = "ARRAY [string]", shape=rectangle, style=filled, color=yellow]
         call2_array -> EXIT_aggregate
         MAX_string -> call2_array
@@ -812,16 +871,12 @@ digraph G {
         MAX_string -> call63_types
 
         MIN_string[label="MIN"]
-        //aggregate_select_type_numeric -> MIN
         MIN_string -> call2_array
         aggregate_select_type_string -> MIN_string
         MIN_string -> call63_types
 
 
         MAX_numeric[label = "MAX"]
-        //aggregate_select_type_numeric -> MAX
-        //max_min_numeric -> call52_types
-        //max_min_numeric -> call57_types
         aggregate_select_type_numeric -> MAX_numeric
         MAX_numeric -> call52_types
         call3_array [TYPES="[numeric]", label = "ARRAY [numeric]", shape=rectangle, style=filled, color=yellow]
@@ -829,7 +884,6 @@ digraph G {
         call3_array -> EXIT_aggregate
 
         MIN_numeric[label="MIN"]
-        //aggregate_select_type_numeric -> MIN
         aggregate_select_type_numeric -> MIN_numeric
         MIN_numeric -> call52_types
         MIN_numeric -> call3_array
@@ -843,6 +897,7 @@ digraph G {
         aggregate_select_type_numeric -> COUNT
         COUNT_wildcard[label="*"]
         COUNT_distinct[label="DISTINCT"]
+        COUNT_distinct_wildcard[label="DISTINCT"]
         call8_types_all [TYPES="[any]", label="TYPES: ALL", shape=rectangle, style=filled, color=orange]
         COUNT -> COUNT_wildcard
         COUNT -> COUNT_distinct
@@ -850,7 +905,8 @@ digraph G {
         COUNT_distinct -> call8_types_all
         call8_types_all -> EXIT_aggregate
         COUNT_wildcard -> EXIT_aggregate
-        
+        COUNT_wildcard -> COUNT_distinct_wildcard
+        COUNT_distinct_wildcard -> EXIT_aggregate
         
     }
     

@@ -1011,6 +1011,8 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
 
     /// subgraph def_aggregate
     /// TODO: add alias, check for which functions DISTINCT is possible, add statistics functions
+    /// TODO fix distinct COUNT(*)
+    /// TODO functions with filter
     fn handle_aggregate(&mut self, equal_to: Option<TypesSelectedType>,
         compatible_with: Option<TypesSelectedType>) -> Expr {
         self.expect_state("aggregate");   
@@ -1020,15 +1022,31 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             "aggregate_select_type_numeric" => {
                 match self.next_state().as_str() {
                     arm @ "COUNT" => {
-                        match self.next_state().as_str()  {
+                        match self.next_state().as_str() {
                             "COUNT_wildcard" => {
-                                result = Expr::Function(sqlparser::ast::Function {
-                                    name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
-                                    args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Wildcard)],
-                                    over: None,
-                                    distinct: false,
-                                    special: false,
-                                });
+                                match self.next_state().as_str() {
+                                    "EXIT_aggregate" => {
+                                        result = Expr::Function(sqlparser::ast::Function {
+                                            name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Wildcard)],
+                                            over: None,
+                                            distinct: false,
+                                            special: false,
+                                        });        
+                                    },
+                                    "COUNT_distinct_wildcard" => {
+                                        result = Expr::Function(sqlparser::ast::Function {
+                                            name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Wildcard)],
+                                            over: None,
+                                            distinct: true,
+                                            special: false,
+                                        });
+                                        self.expect_state("EXIT_aggregate");
+                                    },
+                                    any => self.panic_unexpected(any),
+                                }
+                                return result;
                             },
                             arm @ ("COUNT_distinct" | "call8_types_all") => {
                                 let count_distinct = match arm {
@@ -1099,7 +1117,8 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                         }
 
                     },
-                    arm @ ("BIT_XOR" | "BIT_OR" | "BIT_AND" | "AVG" | "SUM") => {
+                    arm @ ("BIT_XOR" | "BIT_OR" | "BIT_AND" | "AVG" | "SUM" | 
+                    "STDDEV" | "STDDEV_POP" | "STDDEV_SAMP" | "VARIANCE" | "VAR_POP" | "VAR_SAMP") => {
                         self.expect_state("call52_types");
                         result = Expr::Function(sqlparser::ast::Function {
                             name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
@@ -1108,6 +1127,20 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             distinct: false,
                             special: false,
                         });
+                    },
+                    arm @ ("CORR" | "COVAR_POP" | "COVAR_SAMP" | "REGR_AVGX" | "REGR_AVGY" | 
+                    "REGR_COUNT" | "REGR_INTERCEPT" | "REGR_R2" | "REGR_SLOPE" | "REGR_SSY" | "REGR_SXX" | "REGR_SYY") => {
+                        self.expect_state("call68_types");
+                        let first_arg = FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1));
+                        self.expect_state("call69_types");
+                        result = Expr::Function(sqlparser::ast::Function {
+                            name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
+                            args: vec![first_arg, 
+                            FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Numeric), None).1))],
+                            over: None,
+                            distinct: false,
+                            special: false,
+                        })
                     },
                     any => self.panic_unexpected(any),                
                 }
