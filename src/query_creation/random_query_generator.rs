@@ -846,7 +846,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     "types_select_type_list_expr" => TypesSelectedType::ListExpr,
                     "types_select_type_numeric" => TypesSelectedType::Numeric,
                     "types_select_type_string" => TypesSelectedType::String,
-                    "types_select_type_bool" => TypesSelectedType::Bool,
                     any => self.panic_unexpected(any)
                 };
                 self.state_generator.push_known(types_selected_type.get_types());
@@ -859,7 +858,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             },
             "types_null" => (TypesSelectedType::Any, Expr::Value(Value::Null)),
             "call0_numeric" => (TypesSelectedType::Numeric, self.handle_numeric()),
-            "call0_bool" => (TypesSelectedType::Bool, self.handle_bool()),  
             "call1_VAL_3" => (TypesSelectedType::Val3, self.handle_val_3()),
             "call0_string" => (TypesSelectedType::String, self.handle_string()),
             "call0_list_expr" => {
@@ -922,7 +920,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             "call31_types" => TypesSelectedType::String,
             "call51_types" => TypesSelectedType::ListExpr,
             "call14_types" => TypesSelectedType::Array,
-            "call60_types" => TypesSelectedType::Bool,
             any => self.panic_unexpected(any)
         };
         let types_value = self.handle_types(Some(array_compat_type.clone()), None).1;
@@ -953,7 +950,6 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             "call18_types" => TypesSelectedType::String,
             "call19_types" => TypesSelectedType::ListExpr,
             "call20_types" => TypesSelectedType::Array,
-            "call59_types" => TypesSelectedType::Bool,
             any => self.panic_unexpected(any)
         };
         let types_value = self.handle_types(Some(list_compat_type.clone()), None).1;
@@ -984,7 +980,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             },
             "BinaryBoolOp" => {
                 self.expect_state("call54_types");
-                let operand_1 = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                let operand_1 = self.handle_types(Some(TypesSelectedType::Val3), None).1;
                 let binary_bool_op = match self.next_state().as_str() {
                     "BoolAnd" => BinaryOperator::And,
                     "BoolOr" => BinaryOperator::Or,
@@ -992,14 +988,14 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     any => self.panic_unexpected(any)
                 };
                 self.expect_state("call55_types");
-                let operand_2 = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                let operand_2 = self.handle_types(Some(TypesSelectedType::Val3), None).1;
                 Expr::BinaryOp { left: Box::new(operand_1), op: (binary_bool_op), right: Box::new(operand_2) }
             },
             "BoolNot" => {
                 self.expect_state("call62_types");
                 //TODO: is Bool compatible_with 3vl ?!
                 Expr::UnaryOp { op: UnaryOperator::Not, expr: Box::new( self.handle_types(
-                    Some(TypesSelectedType::Bool), None
+                    Some(TypesSelectedType::Val3), None
                 ).1) }
 
             },
@@ -1209,7 +1205,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                          "call56_types" => {
                         result = Expr::ArrayAgg(ArrayAgg {
                             distinct: false,
-                            expr: Box::new(self.handle_types(Some(TypesSelectedType::Bool), None).1),
+                            expr: Box::new(self.handle_types(Some(TypesSelectedType::Val3), None).1),
                             order_by: None,
                             limit: None,
                             within_group: false,
@@ -1224,7 +1220,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                         self.expect_state("call56_types");
                         result = Expr::Function(sqlparser::ast::Function {
                             name: ObjectName(vec![Ident{value: arm.to_string(), quote_style: (None)}]),
-                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Bool), None).1))],
+                            args: vec![FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(Some(TypesSelectedType::Val3), None).1))],
                             over: None, 
                             distinct: false,
                             special: false,
@@ -1329,7 +1325,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 match self.next_state().as_str() {
                     "having_bool" => {
                         self.expect_state("call66_types");
-                        let left_arg = self.handle_types(Some(TypesSelectedType::Bool), None).1;
+                        let left_arg = self.handle_types(Some(TypesSelectedType::Val3), None).1;
                         self.expect_state("having_bool_op");
                         let op = match self.next_state().as_str() {
                             "having_or" => BinaryOperator::Or,
@@ -1338,7 +1334,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                             any => self.panic_unexpected(any)
                         };
                         self.expect_state("call2_aggregate");
-                        let right_arg = self.handle_aggregate(Some(TypesSelectedType::Bool), None);
+                        let right_arg = self.handle_aggregate(Some(TypesSelectedType::Val3), None);
                         result = Expr::BinaryOp { left: Box::new(left_arg), op: op, right: Box::new(right_arg) }
                     },
                     "having_numeric" => {

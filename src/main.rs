@@ -19,7 +19,7 @@ struct ProgramArgs {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
     /// number of generated queries
-    #[structopt(default_value = "250")]
+    #[structopt(default_value = "500")]
     num_generate: usize,
     /// Use AntiCallModel for dynamic probabilities
     #[structopt(short, long)]
@@ -49,6 +49,7 @@ fn run_generation<DynMod: DynamicModel, StC: StateChooser>(markov_generator: Mar
         if equivalent {
             num_equivalent += 1;
         }
+        println!("{} / {}", num_equivalent, num_generated);
         if i % 1000 == 0 {
             print!("{}/{num_generate}      \r", i);
             std::io::stdout().flush().unwrap();

@@ -590,10 +590,6 @@ digraph G {
         call0_array [OPTIONAL="array", TYPES="[known]", MODS="[...]", label="array?\nTYPES: [...types]\nMODS: [...mods]", shape=rectangle, style=filled, color=yellow]
         types -> call0_array
         call0_array -> EXIT_types
-        
-        call0_bool [OPTIONAL="bool", TYPES="[known]", MODS="[...]", label="bool?\nMODS: [...mods]", shape=rectangle, style=filled, color=violet]
-        types -> call0_bool
-        call0_bool -> EXIT_types
     }
 
     subgraph def_types_all {
@@ -606,7 +602,7 @@ digraph G {
     }
 
     subgraph def_column_spec {
-        column_spec [TYPE="numeric, 3VL Value, string, array, bool", label="column specifier\ntype=numeric | 3VL Value | string | array | bool", shape=octagon, style=filled, color=gold]
+        column_spec [TYPE="numeric, 3VL Value, string, array", label="column specifier\ntype=numeric | 3VL Value | string | array", shape=octagon, style=filled, color=gold]
         EXIT_column_spec [label="EXIT column specifier", shape=rectangle]
 
         qualified_name [label="Qualified column name of type: type"]
@@ -618,7 +614,7 @@ digraph G {
     }
 
     subgraph def_array {
-        array [TYPES="[numeric, 3VL Value, string, list expr, array, bool]", MODS="[no column spec]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=yellow]
+        array [TYPES="[numeric, 3VL Value, string, list expr, array]", MODS="[no column spec]", label="array\ntypes=[numeric?, 3VL Value?, string?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=yellow]
         EXIT_array[label="EXIT array"]
 
         call50_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
@@ -644,15 +640,11 @@ digraph G {
         array -> call14_types
         call14_types -> call50_types
         
-        call60_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?\nMODS: [...mods]", shape=rectangle, MODS="[...]", style=filled, color=lightblue]
-        array -> call60_types
-        call60_types -> call50_types
-
         call50_types -> EXIT_array
     }
 
     subgraph def_list_expr {
-        list_expr[TYPES="[numeric, 3VL Value, string, list expr, array, bool]", MODS="[no column spec]", label="list expr\ntypes=[numeric?, 3VL Value?, string?, list expr?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=blue]
+        list_expr[TYPES="[numeric, 3VL Value, string, list expr, array]", MODS="[no column spec]", label="list expr\ntypes=[numeric?, 3VL Value?, string?, list expr?, array?]\nmods: [no column spec]", shape=octagon, style=filled, color=blue]
         EXIT_list_expr[label="EXIT list expr"]
 
         call49_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
@@ -676,10 +668,6 @@ digraph G {
         call20_types [OPTIONAL="array", TYPES="[array]", label="TYPE: array?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
         list_expr -> call20_types
         call20_types -> call49_types
-        
-        call59_types [OPTIONAL="bool", TYPES="[bool]", label="TYPE: bool?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
-        list_expr -> call59_types
-        call59_types -> call49_types
 
         call49_types -> call49_types
         call49_types -> EXIT_list_expr
@@ -749,11 +737,11 @@ digraph G {
         having_aggr -> having_string
 
         call65_types[TYPES="[numeric]", label = "TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
-        call66_types[TYPES="[bool]", label = "TYPES: bool", shape=rectangle, style=filled, color=lightblue]
+        call66_types[TYPES="[3VL Value]", label = "TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
         call67_types[TYPES="[string]", label = "TYPES: string", shape=rectangle, style=filled, color=lightblue]
         
         call1_aggregate[TYPES="[numeric]", label="numeric aggregate", shape="rectagle", style=filled, color=purple]
-        call2_aggregate[TYPES="[bool]", label="bool aggregate", shape="rectagle", style=filled, color=purple]
+        call2_aggregate[TYPES="[3VL Value]", label="3VL Value aggregate", shape="rectagle", style=filled, color=purple]
         call3_aggregate[TYPES="[string]", label = "string aggregate", shape="rectagle", style=filled, color=purple]        
         
         having_num_op[label="select op."]
@@ -799,7 +787,7 @@ digraph G {
     }       
 
     subgraph def_aggregate {
-        aggregate [TYPES="[numeric, array, string, bool]", label="AGGREGATE (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?, bool?]", shape=rectangle, style=filled, color=purple]        
+        aggregate [TYPES="[numeric, array, string, 3VL Value]", label="AGGREGATE (generic):\ntypes=[numeric?, 3VL Value?, array?, list expr?, string?]", shape=rectangle, style=filled, color=purple]        
         EXIT_aggregate [label="EXIT aggregate"]
         
         aggregate_select_return_type [label="return type:="]
@@ -807,14 +795,14 @@ digraph G {
         aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
         aggregate_select_type_array[OPTIONAL="array", label="array?"]
         aggregate_select_type_string[OPTIONAL="string", label="string?"]
-        aggregate_select_type_bool[OPTIONAL="bool", label="bool?"]
+        aggregate_select_type_bool[OPTIONAL="3VL Value", label="3VL Value?"]
 
         aggregate_select_return_type -> aggregate_select_type_numeric
         aggregate_select_return_type -> aggregate_select_type_array
         aggregate_select_return_type -> aggregate_select_type_string
         aggregate_select_return_type -> aggregate_select_type_bool
         
-        call56_types [TYPES="[bool]", label="TYPES: bool", shape=rectangle, style=filled, color=lightblue]
+        call56_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
         //call57_types [TYPES="[array]", label="TYPES: array", shape=rectangle, style=filled, color=lightblue]
         call52_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
         //call58_types [TYPES="[string]", label="TYPES: string", shape=rectangle, style=filled, color=lightblue]
