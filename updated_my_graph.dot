@@ -169,7 +169,7 @@ digraph G {
         SELECT_unnamed_expr -> call54_types
         SELECT_expr_with_alias -> call54_types
 
-        call54_types -> SELECT_list_multiple_values // call0_aggregate_function
+        call54_types -> SELECT_list_multiple_values 
         SELECT_list_multiple_values -> EXIT_SELECT
         SELECT_list_multiple_values_single_column_false [label="OFF: single column", modifier="single column", modifier_mode="off"]
         SELECT_list_multiple_values -> SELECT_list_multiple_values_single_column_false
@@ -178,7 +178,7 @@ digraph G {
         // call0_having [label="HAVING", TYPES="[known]", MODS="[]", shape=rectangle, style=filled, color=mediumvioletred]
         // EXIT_SELECT -> call0_having
         // call0_having -> EXIT_Query
-        call0_aggregate_function [label="aggregate function\nTYPES: ANY", shape = rectangle, style=filled, color=peru]
+        call0_aggregate_function [label="aggregate function\nTYPES: ANY", TYPES="[any]", shape = rectangle, style=filled, color=peru]
         SELECT_projection -> call0_aggregate_function
         call0_aggregate_function -> EXIT_SELECT
         EXIT_SELECT -> EXIT_Query
@@ -641,7 +641,7 @@ digraph G {
     }
 
     subgraph def_aggregate_function {
-        aggregate_function [label="aggregate function", shape=octagon, style=filled, color=peru]
+        aggregate_function [TYPES="[numeric, 3VL Value, text, date]", label="aggregate function", shape=octagon, style=filled, color=peru]
         EXIT_aggregate_function [label="EXIT aggregate function"]
         
         aggregate_select_return_type [label="return type:="]

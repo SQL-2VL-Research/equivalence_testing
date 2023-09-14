@@ -80,7 +80,7 @@ Query {
                                                                             name: ObjectName(
                                                                                 [
                                                                                     Ident {
-                                                                                        value: "BOOL_OR",
+                                                                                        value: "EVERY",
                                                                                         quote_style: None,
                                                                                     },
                                                                                 ],
