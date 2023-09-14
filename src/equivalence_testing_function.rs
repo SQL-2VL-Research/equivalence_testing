@@ -1,7 +1,8 @@
+use sqlparser::keywords::NULL;
 use sqlparser::parser::{Parser, ParserError};
 
 use sqlparser::ast::{
-    Expr, Query, SetExpr,
+    Expr, Query, SetExpr, Value,
 };
 use sqlparser::dialect::PostgreSqlDialect;
 
@@ -83,7 +84,7 @@ fn check_expr(expr: Expr) -> bool {
             } else { true }
         },
         // A literal value, such as string, number, date or NULL
-        Expr::Value(_val) => true,
+        Expr::Value(_val) => (_val != Value::Null),
         // BETWEEN is treated as comparison operation
         // `<expr> [ NOT ] BETWEEN <low> AND <high>`
         Expr::Between {

@@ -128,7 +128,7 @@ pub enum FunctionInputsType {
 }
 
 /// splits a string with commas into a list of trimmed identifiers
-fn get_identifier_names(name_list_str: SmolStr) -> Vec<SmolStr> {
+pub fn get_identifier_names(name_list_str: SmolStr) -> Vec<SmolStr> {
     name_list_str
         .split(',')
         .map(|string| SmolStr::new(string.trim()))

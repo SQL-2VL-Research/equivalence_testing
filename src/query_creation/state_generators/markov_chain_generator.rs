@@ -2,7 +2,7 @@ pub mod state_choosers;
 pub mod dynamic_models;
 pub mod markov_chain;
 pub mod subgraph_type;
-mod dot_parser;
+pub mod dot_parser;
 mod error;
 
 use std::{path::PathBuf, collections::{HashMap, HashSet, VecDeque, BTreeMap}, sync::{Arc, Mutex}};

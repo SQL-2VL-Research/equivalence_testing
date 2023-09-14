@@ -16,3 +16,5 @@ logos = "0.12.1"
 rand = "0.8.5"
 toml = "0.7.6"  # Replace with the latest version available
 regex = "1"
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.48"

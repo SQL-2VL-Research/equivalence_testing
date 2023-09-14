@@ -1,0 +1,750 @@
+# Structure is ALWAYS as follows:
+# 1. General rule is place function definitions inside their own subgraphs.
+# 2. Functional node begins from the node_name node.
+
+# 3. Function definitions & calls look as follows:
+# 1) Definitions:
+# subgraph def_{node_name} {
+#     {node_name} [
+#         TYPES="[{type_name}, ...]" (multiple type variants can be choosen, none can be choosen)
+#         MODS="[{mod_name}, ...]"
+#         uses_wrapped_types="true" (whether to wrap types into the subgraph's type, if subgraph has an inner type)
+#         ...
+#     ]
+#     EXIT_{node_name} [label="EXIT {node_label}"]
+#     ...
+# }
+# 2) Calls (execution will move to a root of a different subgraph):
+#     call{caller_num}_{node_name} [
+#         TYPES="[{type_name}, ...]" OR "[any]" OR "[known]" OR "[compatible]" OR "[...]" (passes all argument types further),
+#         MODS="[{mod_name}, ...]" OR "[...]" (passes all argument modifiers further),
+#         ...
+#     ]
+#
+# TYPE, TYPES and MOD in definitions are only for type-checking.
+# All specified types of modifiers (TYPE, TYPES, MOD) are required to be passed by caller.
+# If TYPES="[any]", all types are selected.
+# If TYPES="[compatible]" or TYPES="[known]", the types are popped from the reprective stacks.
+# from the respective stacks
+
+# 4. Typed node (with a question mark at the end in definition label):
+# {node_name} [TYPE_NAME="type_name"]
+# TYPE_NAME is the name of a type listed in function declaration.
+# The node will be turned off or on respective to the types passed to function call.
+
+# 4.1 A node with a modifier
+# {node_name} [modifier="[trig_name]", modifier_mode="on"/"off"]
+# if `modifier` is present in the modifiers, turn the node on or off according to the modifier_mode.
+
+# 4.2 A node with a call modifier
+# {node_name} [call_modifier="[call_trig_name]"]
+# if the function corresponding to call_trig_name returns true (handler registered in code),
+# the node is on. Otherwise, it is off.
+
+# 5. Exit a callable node:
+# EXIT_{node_name} [label="EXIT {node_label}"]
+
+# 6. Call a callable node with params:
+# call{caller_num}_{node_name} [TYPES={...}, MODS={...}, ...]
+# ... -> call...
+# there can be multiple callers, so each caller should have a unique id
+# values of TYPES and MOD are exact mathes to those in definition
+
+# 7. Call a callable node without params:
+# call{caller_num}_{node_name} [...]
+# ... -> call...
+
+# 8. These are ignored:
+# 1) ... -> ... [color=none]
+# 2) Graphviz params in [] (label, shape...)
+
+# 9. Define a node before referencing it:
+# FROM []
+# Query -> FROM
+
+# 10. Don't do this:
+# ... -> ... -> ...
+
+# 11. subgraph ignore {} is completely ignored
+
+# 12. Do NOT use block comments /* */
+
+# 13 [temporary]. Mark nodes that will generate a literal value with 100%
+# probability as node[literal="t"]
+
+# 14. To use modifiers provided in arguments, mark a node with modifier="MOD. NAME", modifier_mode="off" / modifier_mode="on"
+
+digraph G {
+    subgraph def_Query {
+        Query [TYPES="[numeric, 3VL Value, text, date]", MODS="[single column, single row]", label="Query\ntypes=[numeric, 3VL Value, text, date]\nmods=[single column, single row]", shape=octagon, style=filled, color=green]
+        EXIT_Query [label="EXIT Query"]
+
+        FROM []
+
+        single_value_true [label="limit 1 (ON: 'single row')", modifier="single row", modifier_mode="on"]
+        Query -> single_value_true
+        single_value_true -> FROM
+
+        single_value_false [label="OFF: 'single row'", modifier="single row", modifier_mode="off"]
+        Query -> single_value_false
+        single_value_false -> FROM
+
+        // limit [label="limit [num]"]
+        // single_value_false -> limit
+        // call52_types [TYPES="[numeric]", MODS="[no column spec]", label="TYPES: numeric\nMODS: [no column spec]", shape=rectangle, style=filled, color=lightblue]
+        // limit -> call52_types
+        // call52_types -> FROM
+
+        FROM_multiple_relations [label="multiple relations"]
+
+        Table []
+        FROM -> Table
+        Table -> FROM_multiple_relations
+        // FROM_multiple_relations -> Table
+
+        call0_Query [label="Query", shape=rectangle, TYPES="[any]", MODS="[]", style=filled, color=green]
+        FROM -> call0_Query
+        call0_Query -> FROM_multiple_relations
+        // FROM_multiple_relations -> call0_Query
+
+        EXIT_FROM [label="EXIT FROM"]
+        FROM_multiple_relations -> EXIT_FROM
+
+        WHERE [label="WHERE"]
+        EXIT_FROM -> WHERE
+
+        call53_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        WHERE -> call53_types
+
+        SELECT []
+        EXIT_WHERE [label="EXIT WHERE"]
+        call53_types -> EXIT_WHERE
+        EXIT_FROM -> EXIT_WHERE
+
+        SELECT []
+        EXIT_SELECT [label="EXIT SELECT"]
+
+        EXIT_WHERE -> SELECT
+
+        // call0_group_by [label="GROUP BY Statement", TYPES="[known]", shape=rectangle, style=filled, color=gray]
+        // EXIT_WHERE -> call0_group_by
+        // call0_group_by -> SELECT
+
+        SELECT_DISTINCT [label="DISTINCT"]
+        // SELECT_PERCENT [label="PERCENT"]
+        // SELECT_TOP [label="TOP"]
+        // call43_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        // SELECT_WITH_TIES [label="WITH TIES"]
+        SELECT_distinct_end [label=";"]
+        // SELECT_percent_end [label=";"]
+
+        SELECT -> SELECT_DISTINCT
+        SELECT_DISTINCT -> SELECT_distinct_end
+        SELECT -> SELECT_distinct_end
+        // SELECT_distinct_end -> SELECT_TOP
+        // SELECT_TOP -> call43_types
+        // call43_types -> SELECT_PERCENT
+        // SELECT_PERCENT -> SELECT_percent_end
+        // call43_types -> SELECT_percent_end
+        // SELECT_percent_end -> SELECT_WITH_TIES
+
+        SELECT_projection [label="SELECT projection"]
+        // SELECT_WITH_TIES -> SELECT_projection
+        SELECT_distinct_end -> SELECT_projection
+        // SELECT_percent_end -> SELECT_projection
+
+        SELECT_list [label="SELECT list"]
+        // SELECT_wildcard[label="*"]
+        // SELECT_qualified_wildcard[label="qualified wildcard"]
+        SELECT_unnamed_expr[label="unnamed expression"]
+        SELECT_expr_with_alias[label="expression with alias"]
+        SELECT_list_multiple_values[label="SELECT list multiple values"]
+
+        SELECT_projection -> SELECT_list
+        // SELECT_list -> SELECT_wildcard
+        // SELECT_list -> SELECT_qualified_wildcard
+        SELECT_list -> SELECT_unnamed_expr
+        SELECT_list -> SELECT_expr_with_alias
+        call54_types [label="TYPES: [...types]", TYPES="[...]", shape=rectangle, style=filled, color=lightblue]
+        SELECT_unnamed_expr -> call54_types
+        SELECT_expr_with_alias -> call54_types
+
+        call54_types -> SELECT_list_multiple_values // call0_aggregate_function
+        SELECT_list_multiple_values -> EXIT_SELECT
+        SELECT_list_multiple_values_single_column_false [label="OFF: single column", modifier="single column", modifier_mode="off"]
+        SELECT_list_multiple_values -> SELECT_list_multiple_values_single_column_false
+        SELECT_list_multiple_values_single_column_false -> SELECT_list
+
+        // call0_having [label="HAVING", TYPES="[known]", MODS="[]", shape=rectangle, style=filled, color=mediumvioletred]
+        // EXIT_SELECT -> call0_having
+        // call0_having -> EXIT_Query
+        call0_aggregate_function [label="aggregate function\nTYPES: ANY", shape = rectangle, style=filled, color=peru]
+        SELECT_projection -> call0_aggregate_function
+        call0_aggregate_function -> EXIT_SELECT
+        EXIT_SELECT -> EXIT_Query
+    }
+
+    subgraph def_VAL_3 {
+        VAL_3 [shape=rectangle, label="3VL Value\nmods: [no column spec]", MODS="[no column spec]", style=filled, color=red]
+        EXIT_VAL_3 [shape=rectangle, label="EXIT 3VL Value"]
+
+        IsNull [label="IS NULL"]
+        call55_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        VAL_3 -> IsNull
+        IsNull -> call55_types
+        IsNull_not [label="NOT"]
+        IsNull -> IsNull_not
+        IsNull_not -> call55_types
+        call55_types -> EXIT_VAL_3
+
+        IsDistinctFrom [label="IS DISTINCT FROM"]
+        call56_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        IsDistinctNOT [label="NOT"]
+        DISTINCT []
+        call21_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        VAL_3 -> IsDistinctFrom
+        IsDistinctFrom -> call56_types
+        call56_types -> IsDistinctNOT
+        IsDistinctNOT -> DISTINCT
+        call56_types -> DISTINCT
+        DISTINCT -> call21_types
+        call21_types -> EXIT_VAL_3
+
+        Exists_not [label="NOT"]
+        Exists [label="EXISTS"]
+        call2_Query [TYPES="[any]", MODS="[]", label="Query\nTYPES: ANY", shape=rectangle, style=filled, color=green]
+        VAL_3 -> Exists
+        Exists -> call2_Query
+        call2_Query -> EXIT_VAL_3
+        Exists -> Exists_not
+        Exists_not -> call2_Query
+
+        InList[label="IN [list expr]"]
+        InListNot [label="NOT"]
+        InListIn [label="IN"]
+        VAL_3 -> InList
+        call57_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        InList -> call57_types
+        call57_types -> InListNot
+        InListNot -> InListIn
+        call57_types -> InListIn
+        call1_list_expr [TYPES="[compatible]", MODS="[...]", label="list expr\nTYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=blue]
+        InListIn -> call1_list_expr
+        call1_list_expr -> EXIT_VAL_3
+
+        InSubquery[label="IN [subquery]"]
+        InSubqueryNot [label="NOT"]
+        InSubqueryIn [label="IN"]
+        call58_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        VAL_3 -> InSubquery
+        InSubquery -> call58_types
+        call58_types -> InSubqueryNot
+        InSubqueryNot -> InSubqueryIn
+        call58_types -> InSubqueryIn
+        call3_Query [TYPES="[compatible]", MODS="[single column]", label="Query\nTYPE: [compatible]\nMODS: [single column]", shape=rectangle, style=filled, color=green]
+        InSubqueryIn -> call3_Query
+        call3_Query -> EXIT_VAL_3
+
+        Between[label="BETWEEN . AND ."]
+        BetweenBetween [label="BETWEEN"]
+        BetweenBetweenAnd [label="AND"]
+        VAL_3 -> Between
+        call59_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        Between -> call59_types
+        call59_types -> BetweenBetween
+        call22_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BetweenBetween -> call22_types
+        call22_types -> BetweenBetweenAnd
+        call23_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BetweenBetweenAnd -> call23_types
+        call23_types -> EXIT_VAL_3
+
+        BinaryComp[label="CMP"]
+        BinaryCompLess [label="<"]
+        BinaryCompEqual [label="="]
+        BinaryCompLessEqual [label="<="]
+        BinaryCompUnEqual [label="<>"]
+        VAL_3 -> BinaryComp
+        call60_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        BinaryComp -> call60_types
+        call24_types [MODS="[...]", TYPES="[compatible]", label="TYPES: [compatible]\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        call60_types -> BinaryCompLess
+        BinaryCompLess -> call24_types
+        call60_types -> BinaryCompEqual
+        BinaryCompEqual -> call24_types
+        call60_types -> BinaryCompLessEqual
+        BinaryCompLessEqual -> call24_types
+        call60_types -> BinaryCompUnEqual
+        BinaryCompUnEqual -> call24_types
+        call24_types -> EXIT_VAL_3
+
+        AnyAll[label="ANY / ALL"]
+        AnyAllSelectOp[label="select op."]
+        AnyAllLess [label="<"]
+        AnyAllEqual [label="="]
+        AnyAllLessEqual [label="<="]
+        AnyAllUnEqual [label="<>"]
+        AnyAllSelectIter[label="select iterable"]
+        AnyAllAnyAll[label="select ANY/ALL"]
+        AnyAllAnyAllAny[label="ANY"]
+        AnyAllAnyAllAll[label="ALL"]
+        VAL_3 -> AnyAll
+        call61_types [TYPES="[any]", MODS="[...]", label="TYPES: ANY\nMODS: [...mods]", shape=rectangle, color=lightblue, style=filled]
+        AnyAll -> call61_types
+        call61_types -> AnyAllSelectOp
+        AnyAllSelectOp -> AnyAllLess
+        AnyAllLess -> AnyAllSelectIter
+        AnyAllSelectOp -> AnyAllEqual
+        AnyAllEqual -> AnyAllSelectIter
+        AnyAllSelectOp -> AnyAllLessEqual
+        AnyAllLessEqual -> AnyAllSelectIter
+        AnyAllSelectOp -> AnyAllUnEqual
+        AnyAllUnEqual -> AnyAllSelectIter
+        call4_Query [TYPES="[compatible]", MODS="[single column]", label="Query\nTYPE: [compatible]\nMODS: [single column]", shape=rectangle, style=filled, color=green]
+        AnyAllSelectIter -> call4_Query
+        call4_Query -> AnyAllAnyAll
+        AnyAllAnyAll -> AnyAllAnyAllAny
+        AnyAllAnyAllAny -> EXIT_VAL_3
+        AnyAllAnyAll -> AnyAllAnyAllAll
+        AnyAllAnyAllAll -> EXIT_VAL_3
+
+        BinaryStringLike[label="LIKE"]
+        BinaryStringLikeNot [label="NOT"]
+        BinaryStringLikeIn [label="LIKE"]
+        VAL_3 -> BinaryStringLike
+        call25_types [MODS="[...]", TYPES="[text]", label="TYPES: text\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BinaryStringLike -> call25_types
+        call25_types -> BinaryStringLikeNot
+        BinaryStringLikeNot -> BinaryStringLikeIn
+        call25_types -> BinaryStringLikeIn
+        call26_types [MODS="[...]", TYPES="[text]", label="TYPES: text\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BinaryStringLikeIn -> call26_types
+        call26_types -> EXIT_VAL_3
+
+        BinaryBooleanOpV3[label="bool op."]
+        BinaryBooleanOpV3AND [label="AND"]
+        BinaryBooleanOpV3OR [label="OR"]
+        // BinaryBooleanOpV3XOR [label="XOR"] // THERE IS NO XOR IN POSTGRESQL
+        VAL_3 -> BinaryBooleanOpV3
+        call27_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BinaryBooleanOpV3 -> call27_types
+        call27_types -> BinaryBooleanOpV3AND
+        call28_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BinaryBooleanOpV3AND -> call28_types
+        call27_types -> BinaryBooleanOpV3OR
+        BinaryBooleanOpV3OR -> call28_types
+        // call27_types -> BinaryBooleanOpV3XOR
+        // BinaryBooleanOpV3XOR -> call28_types
+        call28_types -> EXIT_VAL_3
+
+        true [literal="t"]
+        VAL_3 -> true
+        true -> EXIT_VAL_3
+        false [literal="t"]
+        VAL_3 -> false
+        false -> EXIT_VAL_3
+
+        Nested_VAL_3[label="([expr])"]
+        VAL_3 -> Nested_VAL_3
+        call29_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        Nested_VAL_3 -> call29_types
+        call29_types -> EXIT_VAL_3
+
+        UnaryNot_VAL_3[label="NOT"]
+        call30_types [MODS="[...]", TYPES="[3VL Value]", label="TYPES: 3VL Value\nmodif.: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        VAL_3 -> UnaryNot_VAL_3
+        UnaryNot_VAL_3 -> call30_types
+        call30_types -> EXIT_VAL_3
+    }
+
+    subgraph def_numeric {
+        numeric [shape=rectangle, label="numeric\nmods: [no column spec]", MODS="[no column spec]", style=filled, color=chocolate]
+        EXIT_numeric [label="EXIT numeric"]  // TODO: OUT_TYPES="[numeric, integer]", rename numeric[...] to number[...]
+
+        numeric_literal[label="literal", literal="t"]
+        numeric -> numeric_literal
+        numeric_literal_int[label="random int", literal="t"]
+        numeric_literal -> numeric_literal_int
+        numeric_literal_int -> EXIT_numeric
+        numeric_literal_float[label="random float", literal="t"]
+        numeric_literal -> numeric_literal_float
+        numeric_literal_float -> EXIT_numeric
+
+        BinaryNumericOp[label="binary op."]
+        call47_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        numeric -> BinaryNumericOp
+        call48_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        BinaryNumericOp -> call48_types
+        binary_numeric_plus [label="+"]
+        call48_types -> binary_numeric_plus
+        binary_numeric_plus -> call47_types
+        binary_numeric_minus [label="-"]
+        call48_types -> binary_numeric_minus
+        binary_numeric_minus -> call47_types
+        binary_numeric_mul [label="*"]
+        call48_types -> binary_numeric_mul
+        binary_numeric_mul -> call47_types
+        binary_numeric_div [label="/"]
+        call48_types -> binary_numeric_div
+        binary_numeric_div -> call47_types
+        binary_numeric_bin_or [label="|"]
+        call48_types -> binary_numeric_bin_or
+        binary_numeric_bin_or -> call47_types
+        binary_numeric_bin_and [label="&"]
+        call48_types -> binary_numeric_bin_and
+        binary_numeric_bin_and -> call47_types
+        binary_numeric_bin_xor [label="^"]
+        call48_types -> binary_numeric_bin_xor
+        binary_numeric_bin_xor -> call47_types
+        call47_types -> EXIT_numeric
+
+        UnaryNumericOp [label="unary op."]
+        call1_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        numeric -> UnaryNumericOp
+        unary_numeric_plus[label="+"]
+        UnaryNumericOp -> unary_numeric_plus
+        unary_numeric_plus -> call1_types
+        unary_numeric_minus[label="-"]
+        UnaryNumericOp -> unary_numeric_minus
+        unary_numeric_minus -> call1_types
+        unary_numeric_bin_not [label="~"]
+        UnaryNumericOp -> unary_numeric_bin_not
+        unary_numeric_bin_not -> call1_types
+        unary_numeric_sq_root [label="|/"]
+        UnaryNumericOp -> unary_numeric_sq_root
+        unary_numeric_sq_root -> call1_types
+        unary_numeric_cub_root [label="||/"]
+        UnaryNumericOp -> unary_numeric_cub_root
+        unary_numeric_cub_root -> call1_types
+        // unary_numeric_postfix_fact [label="!"]         // THESE 2 WERE REMOVED FROM POSTGRESQL
+        // UnaryNumericOp -> unary_numeric_postfix_fact
+        // unary_numeric_postfix_fact -> call1_types
+        // unary_numeric_prefix_fact [label="!!"]
+        // UnaryNumericOp -> unary_numeric_prefix_fact
+        // unary_numeric_prefix_fact -> call1_types
+        unary_numeric_abs [label="@"]
+        UnaryNumericOp -> unary_numeric_abs
+        unary_numeric_abs -> call1_types
+        call1_types -> EXIT_numeric
+
+        numeric_string_Position[label="POSITION([expr] in [expr])"]
+        numeric -> numeric_string_Position
+        call2_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        numeric_string_Position -> call2_types
+        string_position_in [label="in"]
+        call2_types -> string_position_in
+        call3_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        string_position_in -> call3_types
+        call3_types -> EXIT_numeric
+
+        Nested_numeric[label="([expr])"]
+        numeric -> Nested_numeric
+        call4_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        Nested_numeric -> call4_types
+        call4_types -> EXIT_numeric
+    }
+
+    subgraph def_text {
+        text [label="text\nmods: [no column spec]", MODS="[no column spec]", shape=rectangle, style=filled, color=pink]
+        EXIT_text [label="EXIT text"]
+
+        text_literal [label="random text literal", literal="t"]
+        text -> text_literal
+        text_literal -> EXIT_text
+
+        text_trim[label="TRIM"]
+        text -> text_trim
+        call5_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        text_trim -> call5_types
+        call6_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        text_trim -> call6_types
+        BOTH []
+        call6_types -> BOTH
+        BOTH -> call5_types
+        LEADING []
+        call6_types -> LEADING
+        LEADING -> call5_types
+        TRAILING []
+        call6_types -> TRAILING
+        TRAILING -> call5_types
+        call5_types -> EXIT_text
+
+        text_concat [label="concatenation"]
+        text -> text_concat
+        call7_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        text_concat -> call7_types
+        text_concat_concat [label="||"]
+        call7_types -> text_concat_concat
+        call8_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        text_concat_concat -> call8_types
+        call8_types -> EXIT_text
+
+        // text_substring[label="substring"]
+        // text -> text_substring
+        // call9_types [TYPES="[text]", MODS="[...]", label="TYPES: text\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        // text_substring -> call9_types
+        // text_substr_numeric_from_from[label="from"]
+        // call9_types -> text_substr_numeric_from_from
+        // call10_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        // text_substr_numeric_from_from -> call10_types
+        // call10_types -> EXIT_text
+        // text_substr_numeric_len_len [label="length"]
+        // call10_types -> text_substr_numeric_len_len
+        // call11_types [TYPES="[numeric]", MODS="[...]", label="TYPES: numeric\nMODS: [...mods]", shape=rectangle, style=filled, color=lightblue]
+        // text_substr_numeric_len_len -> call11_types
+        // call11_types -> EXIT_text
+    }
+
+    subgraph def_date {
+        date [label="date\nmods: [no column spec]", MODS="[no column spec]", shape=rectangle, style=filled, color=cadetblue4]
+        EXIT_date [label="EXIT date"]
+
+        date_literal [label="DATE literal"]
+        date -> date_literal
+        date_literal -> EXIT_date
+    }
+
+    subgraph def_types {
+        types [TYPES="[numeric, 3VL Value, text, date]", MODS="[no column spec, no subquery, check group by]", label="TYPE(S) (generic):\ntypes=[numeric, 3VL Value, text, date]\nmods=[no column spec, no subquery, check group by]", shape=octagon, style=filled, color=lightblue]
+        EXIT_types [label="EXIT GENERIC TYPE(S)", shape=rectangle]
+
+        types_select_type_numeric[TYPE_NAME="numeric", label="numeric?", set_value="types_type"]
+        types -> types_select_type_numeric
+        types_select_type_3vl[TYPE_NAME="3VL Value", label="3VL Value?", set_value="types_type"]
+        types -> types_select_type_3vl
+        types_select_type_text[TYPE_NAME="text", label="text?", set_value="types_type"]
+        types -> types_select_type_text
+        types_select_type_date[TYPE_NAME="date", label="date?", set_value="types_type"]
+        types -> types_select_type_date
+
+        // types_null [label="Untyped null"]
+        // types -> types_null
+        // types_null -> EXIT_types
+
+        types_return_typed_null [label="Typed null"]
+        types_select_type_numeric -> types_return_typed_null
+        types_select_type_3vl -> types_return_typed_null
+        types_select_type_text -> types_return_typed_null
+        types_select_type_date -> types_return_typed_null
+
+        types_return_typed_null -> EXIT_types
+
+        types_select_special_expression [label="select special expression"]
+        types_select_type_numeric -> types_select_special_expression
+        types_select_type_3vl -> types_select_special_expression
+        types_select_type_text -> types_select_special_expression
+        types_select_type_date -> types_select_special_expression
+
+        types_column_spec [modifier="no column spec", modifier_mode="off", label="column specifier\nmod.: 'no column spec'"]
+        types_select_special_expression -> types_column_spec
+        call0_column_spec [TYPES="[known]", call_modifier="is_column_type_available", modifier="check group by", modifier_mode="off", label="column specifier (src.: FROM)\nTYPE: known\ncall.mod.: 'is_column_type_available'", shape=rectangle, style=filled, color=gold]
+        types_column_spec -> call0_column_spec
+        call0_column_spec -> EXIT_types
+        call1_column_spec [TYPES="[known]", call_modifier="is_column_type_available", modifier="check group by", modifier_mode="on", label="column specifier (src.: GROUP BY)\nTYPE: known\ncall.mod.: 'is_column_type_available'", shape=rectangle, style=filled, color=gold]
+        types_column_spec -> call1_column_spec
+        call1_column_spec -> EXIT_types
+
+        call1_Query [TYPES="[known]", MODS="[single row, single column]", label="Query\nMODS: [single row, single column]\nTYPE: known\nmod.: 'no subquery'", modifier="no subquery", modifier_mode="off", shape=rectangle, style=filled, color=green]
+        types_select_special_expression -> call1_Query
+        call1_Query -> EXIT_types
+
+        call0_numeric [label="numeric\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=chocolate]
+        types_select_type_numeric -> call0_numeric
+        call0_numeric -> EXIT_types
+
+        call1_VAL_3 [label="3VL Value\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=red]
+        types_select_type_3vl -> call1_VAL_3
+        call1_VAL_3 -> EXIT_types
+
+        call0_text [label="text\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=pink]
+        types_select_type_text -> call0_text
+        call0_text -> EXIT_types
+
+        call0_date [label="date\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=cadetblue4]
+        types_select_type_date -> call0_date
+        call0_date -> EXIT_types
+    }
+
+    subgraph def_column_spec {
+        column_spec [TYPES="[numeric, 3VL Value, text, date]", label="column specifier\ntypes=[numeric, 3VL Value, text, date]", shape=octagon, style=filled, color=gold]
+        EXIT_column_spec [label="EXIT column specifier", shape=rectangle]
+
+        typed_column_name [label="Unqualified/Qualified column name of type: type"]
+        column_spec -> typed_column_name
+        typed_column_name -> EXIT_column_spec
+    }
+
+    subgraph def_list_expr {
+        list_expr [TYPES="[numeric, 3VL Value, text, date]", MODS="[no column spec]", label="list expr\ntypes=[numeric, 3VL Value, text, date]\nmods: [no column spec]", shape=octagon, style=filled, color=blue]
+        EXIT_list_expr[label="EXIT list expr"]
+
+        call16_types [TYPE_NAME="numeric", TYPES="[numeric]", label="TYPE: numeric?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        list_expr -> call16_types
+        call17_types [TYPE_NAME="3VL Value", TYPES="[3VL Value]", label="TYPE: 3VL Value?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        list_expr -> call17_types
+        call18_types [TYPE_NAME="text", TYPES="[text]", label="TYPE: text?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        list_expr -> call18_types
+        call62_types [TYPE_NAME="date", TYPES="[date]", label="TYPE: date?\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        list_expr -> call62_types
+
+        list_expr_multiple_values [label="Multiple values"]
+        call16_types -> list_expr_multiple_values
+        call17_types -> list_expr_multiple_values
+        call18_types -> list_expr_multiple_values
+        call62_types -> list_expr_multiple_values
+
+        call49_types [TYPES="[compatible]", label="TYPES: [compatible]\nMODS: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        list_expr_multiple_values -> call49_types
+        list_expr_multiple_values -> EXIT_list_expr
+        call49_types -> call49_types
+
+        call49_types -> EXIT_list_expr
+    }
+
+    subgraph def_group_by {
+        group_by [label="GROUP BY", shape=rectangle, style=filled, color=gray]
+        EXIT_group_by [label="EXIT GROUP BY"]
+
+        grouping_rollup [label="rollup"]
+        group_by -> grouping_rollup
+
+        grouping_cube [label="cube"]
+        group_by -> grouping_cube
+        
+        grouping_relations_list[label="relations list"]
+        group_by -> grouping_relations_list
+
+        grouping_set [label="grouping set"]
+        group_by -> grouping_set
+
+        set_list[label="set list"]
+
+        new_set [label="new set"]
+        grouping_set -> set_list
+        set_list -> new_set
+        new_set -> set_list
+        
+        new_relations_set[label="new relation"]
+        new_set -> new_relations_set
+        new_relations_set -> new_set
+        new_relations_set -> EXIT_group_by
+        
+        list_of_relations[label="list"]
+        grouping_relations_list -> list_of_relations
+        grouping_cube -> set_list
+        grouping_rollup -> set_list
+        
+        new_relations_grouping [label="new relations"]
+        list_of_relations -> new_relations_grouping
+        new_relations_grouping -> list_of_relations
+        new_relations_grouping -> EXIT_group_by
+    }
+
+    subgraph def_aggregate_function {
+        aggregate_function [label="aggregate function", shape=octagon, style=filled, color=peru]
+        EXIT_aggregate_function [label="EXIT aggregate function"]
+        
+        aggregate_select_return_type [label="return type:="]
+        aggregate_function -> aggregate_select_return_type
+        aggregate_select_type_numeric[OPTIONAL="numeric", label="numeric?"]
+        aggregate_select_type_array[OPTIONAL="array", label="array?"]
+        aggregate_select_type_string[OPTIONAL="text", label="text?"]
+        aggregate_select_type_bool[OPTIONAL="3VL Value", label="3VL Value?"]
+
+        aggregate_select_return_type -> aggregate_select_type_numeric
+        aggregate_select_return_type -> aggregate_select_type_array
+        aggregate_select_return_type -> aggregate_select_type_string
+        aggregate_select_return_type -> aggregate_select_type_bool
+        
+        call64_types [TYPES="[3VL Value]", label="TYPES: 3VL Value", shape=rectangle, style=filled, color=lightblue]
+        call52_types [TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        call63_types [TYPES="[text]", label="TYPES: text", shape=rectangle, style=filled, color=lightblue]
+        call64_types -> EXIT_aggregate_function
+        call52_types -> EXIT_aggregate_function
+        call63_types -> EXIT_aggregate_function
+
+        call50_types [TYPES="[any]", label="TYPES: [any]\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        
+        array_arg[label="[all]"]
+        aggregate_select_type_array -> array_arg 
+        array_arg -> call50_types
+        call50_types -> EXIT_aggregate_function       
+
+        arg_single_vl3 [label="[3vl]"]
+        aggregate_select_type_bool -> arg_single_vl3
+        arg_single_vl3 -> call64_types
+
+        arg_string[label="[Text]"]
+        aggregate_select_type_string -> arg_string
+        arg_string -> call63_types
+
+
+        COUNT[]
+        aggregate_select_type_numeric -> COUNT
+        COUNT_wildcard[label="*"]
+        COUNT_distinct[label="DISTINCT"]
+        COUNT_distinct_wildcard[label="DISTINCT"]
+        call65_types [TYPES="[any]", label="TYPES: [any]\nmodif.: [...mods]", MODS="[...]", shape=rectangle, style=filled, color=lightblue]
+        
+        COUNT -> COUNT_wildcard
+        COUNT -> COUNT_distinct
+        COUNT -> call65_types
+        COUNT_distinct -> call65_types
+        call65_types -> EXIT_aggregate_function
+        COUNT_wildcard -> EXIT_aggregate_function
+        COUNT_wildcard -> COUNT_distinct_wildcard
+        COUNT_distinct_wildcard -> EXIT_aggregate_function
+        
+        arg_double_numeric [label="[numberic, numeric]"]
+        aggregate_select_type_numeric -> arg_double_numeric   
+
+        call68_types[TYPES="[numeric]", label="TYPES: numeric", shape=rectangle, style=filled, color=lightblue]
+        arg_double_numeric -> call68_types
+        
+        call68_types -> call52_types
+        
+        arg_single_numeric[label="[numeric]"]
+        aggregate_select_type_numeric -> arg_single_numeric
+        arg_single_numeric -> call52_types
+    }
+
+
+    subgraph def_having {
+        having [label="HAVING", shape=rectangle, style=filled, color=mediumvioletred]
+        EXIT_having [label="EXIT HAVING"]
+
+        having_condition [label="HAVING condition"]
+        having -> having_condition
+
+        having_not [label="NOT"]
+        call45_types [TYPES="[3VL Value]", label="TYPE: [3VL]", shape=rectangle, style=filled, color=lightblue]
+        call46_types [TYPES="[3VL Value]", label="TYPE: [3VL]", shape=rectangle, style=filled, color=lightblue]
+        having_logical_expr [label="AND | OR ?"]
+
+        having_condition -> having_not
+        having_condition -> call45_types
+
+        call45_types -> having_logical_expr
+        having_not -> call45_types
+
+        having_not_optional [label="NOT"]
+        having_logical_expr -> having_not_optional
+        having_not_optional -> call46_types
+        having_logical_expr -> call46_types
+
+        call45_types -> EXIT_having
+        call46_types -> EXIT_having
+    }
+
+    # cosmetic
+    subgraph ignore {
+        EXIT_VAL_3 -> numeric [color=none]
+        EXIT_numeric -> text [color=none]
+        EXIT_types -> column_spec [color=none]
+        EXIT_column_spec -> list_expr[color=none]
+        EXIT_Query -> group_by [color=none]
+        EXIT_list_expr -> aggregate_function [color=none]
+        EXIT_aggregate_function -> having [color=none]
+
+    }
+}

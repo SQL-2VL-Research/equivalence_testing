@@ -1,18 +1,51 @@
 {
-    "map": {
-        "[numeric]": {
+        "[numeric, numeric]": {
             "[numeric]": {
-                "AGG_FUN": 1,
-                "AGG_FUN_1": 2,
-                "AGG_FUN_2": 3
+                "REGR_SXX": 1.0, 
+                "REGR_SYY": 1.0, 
+                "REGR_SSY": 1.0, 
+                "CORR": 3.0, 
+                "COVAR_POP": 1.0, 
+                "COVAR_SAMP": 2.0, 
+                "REGR_AVGX": 2.0, 
+                "REGR_AVGY": 2.0,
+                "REGR_COUNT": 2.0, 
+                "REGR_INTERCEPT": 1.0, 
+                "REGR_R2": 1.0, 
+                "REGR_SLOPE": 1.0
             }
         },
-        "[numeric, string]": {
-            "[string]": {
-                "AGG_FUN": 1,
-                "AGG_FUN_1": 2,
-                "AGG_FUN_2": 3
+        "[numeric]": {
+            "[numeric]": {
+                "MIN": 5.0, 
+                "MAX": 5.0, 
+                "VAR_SAMP": 2.0, 
+                "AVG": 5.0, 
+                "BIT_AND": 3.0, 
+                "BIT_OR": 3.0, 
+                "BIT_XOR": 3.0, 
+                "SUM": 4.0, 
+                "STDDEV": 4.0, 
+                "STDDEV_POP": 1.0, 
+                "STDDEV_SAMP": 1.0, 
+                "VARIANCE": 4.0, 
+                "VAR_POP": 1.0
+            }
+        },
+        "[text]": {
+            "[text]": {
+                "STRING_AGG": 1.0, 
+                "MAX": 1.0, 
+                "MIN": 1.0
+            }
+        },
+        "[Val3]": {
+            "[Val3]": {
+                "BOOL_AND": 2.0, 
+                "BOOL_OR": 2.0, 
+                "MAX": 1.0, 
+                "MIN": 1.0, 
+                "EVERY": 1.0
             }
         }
-    }
 }

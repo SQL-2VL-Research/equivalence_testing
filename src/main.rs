@@ -5,13 +5,14 @@ use equivalence_testing::{query_creation::{
     state_generators::{
         MarkovChainGenerator,
         state_choosers::{ProbabilisticStateChooser, StateChooser},
-        dynamic_models::{DynamicModel, MarkovModel, AntiCallModel},
+        dynamic_models::{DynamicModel, MarkovModel, AntiCallModel}, subgraph_type::SubgraphType,
     },
 }, equivalence_testing_function::{
     check_query, string_to_query
 }, config::{Config, ProgramArgs, MainConfig}};
 
 use structopt::StructOpt;
+use equivalence_testing::query_creation::random_query_generator::aggregate_function_settings::AggregateFunctionDistribution;
 
 fn run_generation<DynMod: DynamicModel, StC: StateChooser>(markov_generator: MarkovChainGenerator<StC>, generator_config: QueryGeneratorConfig, main_config: MainConfig) {
     let mut generator = QueryGenerator::<DynMod, StC>::from_state_generator_and_schema(markov_generator, generator_config);
@@ -69,6 +70,11 @@ fn select_model_and_run_generation<StC: StateChooser>(config: Config) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut f = AggregateFunctionDistribution::parse_file( std::path::PathBuf::from("aggregate_functions_distribution_map.json"));
+    let s = f.get_fun_name(vec![SubgraphType::Numeric, SubgraphType::Numeric], vec![SubgraphType::Numeric]);
+
+    println!("/n\n\n");
+
     let program_args = ProgramArgs::from_args();
     let mut config = Config::read_config(&program_args.config_path)?;
     config.update_from_args(&program_args);
