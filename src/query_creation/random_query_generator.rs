@@ -202,9 +202,15 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
         while match self.next_state().as_str() {
             "SELECT_list" => true,
             "call0_aggregate_function" => {
+                let function = self.handle_aggregate_function(None, None);
                 select_body.projection.push(
-                    SelectItem::UnnamedExpr(self.handle_aggregate_function(None, None)));
+                    SelectItem::UnnamedExpr(function.1));
                 self.expect_state("EXIT_SELECT");
+                let mut local_copy = function.0;
+                println!("-------------");
+                println!("{} - before", column_idents_and_graph_types.len());
+                column_idents_and_graph_types.append(&mut local_copy);
+                println!("{} - after", column_idents_and_graph_types.len());
                 false
             },
             "SELECT_list_multiple_values_single_column_false" => {
@@ -399,13 +405,44 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 self.expect_state("call60_types");
                 let (types_selected_type, types_value_1) = self.handle_types(None, None);
                 self.state_generator.set_compatible_list(types_selected_type.get_compat_types());
-                let binary_comp_op = match self.next_state().as_str() {
-                    "BinaryCompEqual" => BinaryOperator::Eq,
-                    "BinaryCompLess" => BinaryOperator::Lt,
-                    "BinaryCompLessEqual" => BinaryOperator::LtEq,
-                    "BinaryCompUnEqual" => BinaryOperator::NotEq,
+                // let binary_comp_op = match self.next_state().as_str() {
+                //     "BinaryCompEqual" => BinaryOperator::Eq,
+                //     "BinaryCompLess" => BinaryOperator::Lt,
+                //     "BinaryCompLessEqual" => BinaryOperator::LtEq,
+                //     "BinaryCompUnEqual" => BinaryOperator::NotEq,
+                //     any => self.panic_unexpected(any)
+                // };
+                let mut binary_comp_op;
+                match self.next_state().as_str() {
+                    "BinaryCompEqual" => binary_comp_op = BinaryOperator::Eq,
+                    "BinaryCompLess" => {
+                        binary_comp_op = BinaryOperator::Lt;
+                        match self.next_state().as_str() {
+                            "call24_types" => {
+                                let types_value_2 = self.handle_types(None, Some(types_selected_type)).1;
+                                return (SubgraphType::Val3, Expr::BinaryOp {
+                                    left: Box::new(types_value_1),
+                                    op: binary_comp_op,
+                                    right: Box::new(types_value_2)
+                                });
+                            },
+                            "call1_aggregate_function" => {
+                                let types_value_2 = self.handle_aggregate_function(Some(SubgraphType::Numeric), None).1;
+                                self.expect_state("EXIT_VAL_3");
+                                return (SubgraphType::Val3, Expr::BinaryOp {
+                                    left: Box::new(types_value_1),
+                                    op: binary_comp_op,
+                                    right: Box::new(types_value_2)
+                                });
+                            },
+                            any => self.panic_unexpected(any),
+                        }
+                    },
+                    "BinaryCompLessEqual" => binary_comp_op = BinaryOperator::LtEq,
+                    "BinaryCompUnEqual" => binary_comp_op = BinaryOperator::NotEq,
                     any => self.panic_unexpected(any)
                 };
+
                 self.expect_state("call24_types");
                 let types_value_2 = self.handle_types(None, Some(types_selected_type)).1;
                 Expr::BinaryOp {
@@ -758,104 +795,110 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
         &mut self,
         equal_to: Option<SubgraphType>,
         compatible_with: Option<SubgraphType>,
-    ) -> Expr {
+    ) -> (Vec<(Option<ObjectName>, SubgraphType)>, Expr) {
         self.expect_state("aggregate_function");
         self.expect_state("aggregate_select_return_type");
         let result;
+        let mut column_idents_and_graph_types : Vec<(Option<ObjectName>, SubgraphType)> = vec![];
+        let chosen_return_type : SubgraphType;
         match self.next_state().as_str() {
-            "aggregate_select_type_numeric" => match self.next_state().as_str() {
-                arm @ "COUNT" => match self.next_state().as_str() {
-                    "COUNT_wildcard" => {
-                        match self.next_state().as_str() {
-                            arm_2 @ ("EXIT_aggregate" | "COUNT_distinct_wildcard")=> {
-                                result = Expr::Function(sqlparser::ast::Function {
-                                    name: ObjectName(vec![Ident {
-                                        value: arm.to_string(),
-                                        quote_style: (None),
-                                    }]),
-                                    args: vec![FunctionArg::Unnamed(
-                                        sqlparser::ast::FunctionArgExpr::Wildcard,
-                                    )],
-                                    over: None,
-                                    distinct: match arm_2 {
-                                        "EXIT_aggregate" => false,
-                                        "COUNT_distinct_wildcard" => true,
-                                        any => self.panic_unexpected(any),
-                                    },
-                                    special: false,
-                                });
+            "aggregate_select_type_numeric" => {
+                chosen_return_type = SubgraphType::Numeric;
+                match self.next_state().as_str() {
+                    arm @ "COUNT" => match self.next_state().as_str() {
+                        "COUNT_wildcard" => {
+                            match self.next_state().as_str() {
+                                arm_2 @ ("EXIT_aggregate" | "COUNT_distinct_wildcard")=> {
+                                    result = Expr::Function(sqlparser::ast::Function {
+                                        name: ObjectName(vec![Ident {
+                                            value: arm.to_string(),
+                                            quote_style: (None),
+                                        }]),
+                                        args: vec![FunctionArg::Unnamed(
+                                            sqlparser::ast::FunctionArgExpr::Wildcard,
+                                        )],
+                                        over: None,
+                                        distinct: match arm_2 {
+                                            "EXIT_aggregate" => false,
+                                            "COUNT_distinct_wildcard" => true,
+                                            any => self.panic_unexpected(any),
+                                        },
+                                        special: false,
+                                    });
+                                }
+                                any => self.panic_unexpected(any),
                             }
-                            any => self.panic_unexpected(any),
+                            //return result;
                         }
-                        //return result;
-                    }
-                    arm @ ("COUNT_distinct" | "call65_types") => {
-                        let count_distinct = match arm {
-                            "COUNT_distinct" => {
-                                self.expect_state("call65_types");
-                                true
-                            }
-                            "call65_types" => false,
-                            any => self.panic_unexpected(any),
-                        };
+                        arm @ ("COUNT_distinct" | "call65_types") => {
+                            let count_distinct = match arm {
+                                "COUNT_distinct" => {
+                                    self.expect_state("call65_types");
+                                    true
+                                }
+                                "call65_types" => false,
+                                any => self.panic_unexpected(any),
+                            };
+                            result = Expr::Function(sqlparser::ast::Function {
+                                name: ObjectName(vec![Ident {
+                                    value: "COUNT".to_string(),
+                                    quote_style: (None),
+                                }]),
+                                args: vec![FunctionArg::Unnamed(
+                                    sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(None, None).1),
+                                )],
+                                over: None,
+                                distinct: count_distinct,
+                                special: false,
+                            });
+                        }
+                        any => self.panic_unexpected(any),
+                    },
+                    "arg_double_numeric" => {
+                        let chosen_type = &(
+                            vec![SubgraphType::Numeric, SubgraphType::Numeric],
+                            vec![SubgraphType::Numeric],
+                        );
+                        let fun_name = self.config.aggregate_functions_distribution.get_fun_name(chosen_type.0.to_owned(), chosen_type.1.to_owned());
+                        self.expect_state("call68_types");
+                        let first_arg = self.handle_types(Some(SubgraphType::Numeric), None).1;
+                        self.expect_state("call52_types");
                         result = Expr::Function(sqlparser::ast::Function {
-                            name: ObjectName(vec![Ident {
-                                value: "COUNT".to_string(),
-                                quote_style: (None),
-                            }]),
-                            args: vec![FunctionArg::Unnamed(
-                                sqlparser::ast::FunctionArgExpr::Expr(self.handle_types(None, None).1),
-                            )],
+                            name: fun_name,
+                            args: vec![
+                                FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
+                                    first_arg,
+                                )),
+                                FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
+                                    self.handle_types(Some(SubgraphType::Numeric), None).1,
+                                )),
+                            ],
                             over: None,
-                            distinct: count_distinct,
+                            distinct: false,
                             special: false,
                         });
                     }
+                    "arg_single_numeric" => {
+                        let chosen_type = &(
+                            vec![SubgraphType::Numeric],
+                            vec![SubgraphType::Numeric],
+                        );
+                        let fun_name = self.config.aggregate_functions_distribution.get_fun_name(chosen_type.0.to_owned(), chosen_type.1.to_owned());
+                        self.expect_state("call52_types");
+                        result = Expr::Function(sqlparser::ast::Function {
+                            name: fun_name,
+                            args: vec![
+                                FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
+                                    self.handle_types(Some(SubgraphType::Numeric), None).1,
+                                )),
+                            ],
+                            over: None,
+                            distinct: false,
+                            special: false,
+                        });
+                    },
                     any => self.panic_unexpected(any),
-                },
-                "arg_double_numeric" => {
-                    let chosen_type = &(
-                        vec![SubgraphType::Numeric, SubgraphType::Numeric],
-                        vec![SubgraphType::Numeric],
-                    );
-                    let fun_name = self.config.aggregate_functions_distribution.get_fun_name(chosen_type.0.to_owned(), chosen_type.1.to_owned());
-                    self.expect_state("call68_types");
-                    self.expect_state("call52_types");
-                    result = Expr::Function(sqlparser::ast::Function {
-                        name: fun_name,
-                        args: vec![
-                            FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
-                                self.handle_types(Some(SubgraphType::Numeric), None).1,
-                            )),
-                            FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
-                                self.handle_types(Some(SubgraphType::Numeric), None).1,
-                            )),
-                        ],
-                        over: None,
-                        distinct: false,
-                        special: false,
-                    });
                 }
-                "arg_single_numeric" => {
-                    let chosen_type = &(
-                        vec![SubgraphType::Numeric],
-                        vec![SubgraphType::Numeric],
-                    );
-                    let fun_name = self.config.aggregate_functions_distribution.get_fun_name(chosen_type.0.to_owned(), chosen_type.1.to_owned());
-                    self.expect_state("call52_types");
-                    result = Expr::Function(sqlparser::ast::Function {
-                        name: fun_name,
-                        args: vec![
-                            FunctionArg::Unnamed(sqlparser::ast::FunctionArgExpr::Expr(
-                                self.handle_types(Some(SubgraphType::Numeric), None).1,
-                            )),
-                        ],
-                        over: None,
-                        distinct: false,
-                        special: false,
-                    });
-                },
-                any => self.panic_unexpected(any),
             },
             arm @ ("aggregate_select_type_string" | "aggregate_select_type_bool") => {
                 self.expect_state(match arm {
@@ -863,6 +906,11 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                     "aggregate_select_type_bool" => "arg_single_vl3", 
                     any => self.panic_unexpected(any),
                 });
+                chosen_return_type = match arm {
+                    "aggregate_select_type_string" => SubgraphType::Text, 
+                    "aggregate_select_type_bool" => SubgraphType::Val3, 
+                    any => self.panic_unexpected(any),
+                };
                 let chosen_type = &(
                     vec![
                         match arm {
@@ -901,6 +949,7 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
                 });
             },
             "aggregate_select_type_array" => {
+                chosen_return_type = SubgraphType::ListExpr(Box::new(SubgraphType::Numeric));
                 self.expect_state("array_arg");
                 let fun_name = ObjectName(vec![Ident {
                     value: "ARRAY_AGG".to_string(),
@@ -922,7 +971,8 @@ impl<DynMod: DynamicModel, StC: StateChooser> QueryGenerator<DynMod, StC> {
             any => self.panic_unexpected(any),
         }
         self.expect_state("EXIT_aggregate_function");
-        result
+        column_idents_and_graph_types.push((None, chosen_return_type));
+        (column_idents_and_graph_types,  result)
     }
 
     /// subgraph def_group_by

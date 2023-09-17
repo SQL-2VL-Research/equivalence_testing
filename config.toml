@@ -1,6 +1,6 @@
 [main]
 # number of queries to generate
-num_generate=20
+num_generate=40
 # count the 2vl-3vl equivalent queries
 count_equivalence=true
 # measure average query generation time
@@ -16,7 +16,7 @@ print_progress=true
 
 [query_generator]
 # print the queries on generation
-print_queries=false
+print_queries=true
 # print the table schema after parcing
 print_schema=false
 # Path to the file with the database schema
