@@ -165,8 +165,6 @@ impl<DynMod: DynamicModel, StC: StateChooser, QVC: QueryValueChooser> QueryGener
             "call0_SELECT" => {},
             "call0_group_by" => {
                 select_body.group_by = self.handle_group_by();
-                println!("flag 4");
-
                 self.expect_state("call0_SELECT");
 
             }
@@ -1096,6 +1094,7 @@ impl<DynMod: DynamicModel, StC: StateChooser, QVC: QueryValueChooser> QueryGener
     /// subgraph def_group_by
     /// TODO add grouping function
     fn handle_group_by(&mut self) -> Vec<Expr> {
+        println!("{:#?}", self.clause_context.from().get_wildcard_columns());
         self.expect_state("group_by");
         let result;
         let mut arg: Vec<Vec<Expr>> = Vec::new();

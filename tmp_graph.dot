@@ -127,7 +127,7 @@ digraph G {
         call0_Query -> FROM_multiple_relations
         FROM_multiple_relations -> call0_Query
 
-        FROM -> EXIT_FROM
+        // FROM -> EXIT_FROM
         FROM_multiple_relations -> EXIT_FROM
     }
 
